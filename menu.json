@@ -1,0 +1,55 @@
+{
+    "key": "main",
+    "name": "Main Menu",
+    "type": "group",
+    "items": [
+        {
+            "key": "volume",
+            "name": "Volume",
+            "type": "number",
+            "value": 100,
+            "min": 0,
+            "max": 100
+        },
+        {
+            "key": "settings",
+            "name": "Settings",
+            "type": "group",
+            "items": [
+                {
+                    "key": "midi_channel",
+                    "name": "Midi Channel",
+                    "type": "number",
+                    "value": 1,
+                    "min": 1,
+                    "max": 16
+                },
+                {
+                    "key": "midi_thru",
+                    "name": "Midi Thru",
+                    "type": "bool",
+                    "value": false
+                }
+            ]
+        },
+        {
+            "key": "info",
+            "name": "Device Info",
+            "type": "group",
+            "items": [
+                {
+                    "key": "info_name",
+                    "name": "Name",
+                    "type": "string",
+                    "value": "rpi-pico-synthio"
+                },
+                {
+                    "key": "info_version",
+                    "name": "Version",
+                    "type": "string",
+                    "value": "0.1.0"
+                }
+            ]
+        }
+    ]
+}
