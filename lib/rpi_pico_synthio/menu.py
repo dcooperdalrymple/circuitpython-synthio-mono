@@ -47,6 +47,8 @@ class Menu:
         self.button_pin.pull = Pull.UP
         self.button = Debouncer(self.button_pin)
 
+        self.callbacks = []
+
     def clear(self):
         if hasattr(self, "splash_text"):
             del self.splash_text
@@ -76,53 +78,72 @@ class Menu:
         return True
 
     def _create_group(self, data, callback=None, parent=None):
-        if not "key" in data or not "name" in data or not "type" in data or data["type"] != "group" or not "items" in data:
+        if not "key" in data or not "name" in data or not "type" in data:
             return None
 
-        group = MenuGroup(data["key"], data["name"], parent)
+        group_class = None
+        if data["type"] == "group":
+            if not "items" in data:
+                return None
+            group_class = MenuGroup
+        elif data["type"] == "envelope":
+            group_class = MenuGroupEnvelope
+        elif data["type"] == "lfo":
+            group_class = MenuGroupLfo
+        if group_class is None:
+            return None
+
+        group = group_class(data["key"], data["name"], parent)
         if parent != None:
             group.append(MenuReturn(parent))
 
-        for item_data in data["items"]:
-            if not "key" in item_data or not "name" in item_data or not "type" in item_data:
-                continue
+        if data["type"] == "group":
+            for item_data in data["items"]:
+                if not "key" in item_data or not "name" in item_data or not "type" in item_data:
+                    continue
 
-            item = None
-            if item_data["type"] == "group":
-                item = self._create_group(item_data, callback, group)
-            elif item_data["type"] == "string":
-                item = MenuValueString(item_data["key"], item_data["name"], item_data["value"])
-            elif item_data["type"] == "bool":
-                item = MenuValueBool(item_data["key"], item_data["name"], item_data["value"])
-                if callback != None:
-                    item.set_callback(callback)
-            elif item_data["type"] == "number":
-                item = MenuValueNumber(item_data["key"], item_data["name"], item_data["value"])
-                if "min" in item_data:
-                    item.set_min(item_data["min"])
-                if "max" in item_data:
-                    item.set_max(item_data["max"])
-                if callback != None:
-                    item.set_callback(callback)
-            elif item_data["type"] == "selector":
-                item = MenuValueSelector(item_data["key"], item_data["name"], item_data["items"])
-                if "value" in item_data:
-                    item.set_value(item_data["value"])
-                if callback != None:
-                    item.set_callback(callback)
+                item = None
+                if item_data["type"] == "group" or item_data["type"] == "envelope" or item_data["type"] == "lfo":
+                    item = self._create_group(item_data, callback, group)
+                elif item_data["type"] == "string":
+                    item = MenuValueString(item_data["key"], item_data["name"], item_data["value"])
+                elif item_data["type"] == "bool":
+                    item = MenuValueBool(item_data["key"], item_data["name"], item_data["value"])
+                    if callback != None:
+                        item.set_callback(callback)
+                elif item_data["type"] == "number":
+                    item = MenuValueNumber(item_data["key"], item_data["name"], item_data["value"])
+                    if "min" in item_data:
+                        item.set_min(item_data["min"])
+                    if "max" in item_data:
+                        item.set_max(item_data["max"])
+                    if "step" in item_data:
+                        item.set_step(item_data["step"])
+                    if "precision" in item_data:
+                        item.set_precision(item_data["precision"])
+                    if callback != None:
+                        item.set_callback(callback)
+                elif item_data["type"] == "selector":
+                    item = MenuValueSelector(item_data["key"], item_data["name"], item_data["items"])
+                    if "value" in item_data:
+                        item.set_value(item_data["value"])
+                    if callback != None:
+                        item.set_callback(callback)
 
-            if item != None:
-                group.append(item)
+                if item != None:
+                    group.append(item)
+        else:
+            group.append_items(callback)
 
         return group
 
-    def setup(self, callback=None):
+    def setup(self):
         self.clear()
 
         # Setup data
         file = open(MENU_CONFIG, "r")
         data = json.loads(file.read())
-        self.group = self._create_group(data, callback)
+        self.group = self._create_group(data, self.handleMenuItem)
         self.current_group = self.group
         self.current_item = None
 
@@ -160,6 +181,14 @@ class Menu:
 
         # Draw frame
         self.draw()
+
+    def addItemEvent(self, callback):
+        self.callbacks.append(callback)
+
+    def handleMenuItem(self, item):
+        if self.callbacks:
+            for callback in self.callbacks:
+                callback(item)
 
     def update(self):
         redraw = False
@@ -247,6 +276,8 @@ class Menu:
             self._draw_item(index, True, item.get_name(), "<")
         elif item.get_type() == "selector":
             self._draw_item(index, True, item.get_name(), str(item.get_value()))
+        elif item.get_type() == "envelope":
+            self._draw_item(index, True, item.get_name(), item.get_values())
         elif not hasattr(item, "get") or item.get() == None:
             self._draw_item(index, True, item.get_name())
         else:
@@ -368,10 +399,10 @@ class MenuReturn(MenuItem):
         return self._parent
 
 class MenuValue(MenuItem):
-    def __init__(self, type="", key="", name=""):
+    def __init__(self, type="", key="", name="", callback=None):
         super().__init__(type, key, name)
         self._value = None
-        self._callback = None
+        self._callback = callback
     def get_key(self):
         return self._key
     def get_name(self):
@@ -395,47 +426,60 @@ class MenuValue(MenuItem):
         pass
 
 class MenuValueString(MenuValue):
-    def __init__(self, key="", name="", text=""):
-        super().__init__("string", key, name)
+    def __init__(self, key="", name="", text="", callback=None):
+        super().__init__("string", key, name, callback)
         self.set(text)
 
 class MenuValueBool(MenuValue):
-    def __init__(self, key="", name="", value=False):
-        super().__init__("bool", key, name)
+    def __init__(self, key="", name="", value=False, callback=None):
+        super().__init__("bool", key, name, callback)
         self.set(value)
+    def set(self, value):
+        if type(value) != type(False):
+            return False
+        if self._value == value:
+            return False
+        self._value = value
+        return True
     def increment(self):
-        if not self._value:
-            self.set(True)
+        return self.set(True)
     def decrement(self):
-        if self._value:
-            self.set(False)
+        return self.set(False)
 
 class MenuValueNumber(MenuValue):
-    def __init__(self, key="", name="", value=0, min=None, max=None):
-        super().__init__("number", key, name)
+    def __init__(self, key="", name="", value=0, min=None, max=None, step=1, precision=0, callback=None):
+        super().__init__("number", key, name, callback)
         self._value = value
         self._min = min
         self._max = max
+        self._step = step
+        self._precision = precision
     def set(self, value):
-        if self._min != None and value < self._min:
+        if self._min != None:
+            value = max(value, self._min)
+        if self._max != None:
+            value = min(value, self._max)
+        if value == self._value:
             return False
-        if self._max != None and value > self._max:
-            return False
-        self._value = value
+        self._value = round(value, self._precision)
         self._do_callback()
         return True
     def increment(self):
-        return self.set(self._value + 1)
+        return self.set(self._value + self._step)
     def decrement(self):
-        return self.set(self._value - 1)
+        return self.set(self._value - self._step)
     def set_min(self, value):
         self._min = value
     def set_max(self, value):
         self._max = value
+    def set_step(self, value):
+        self._step = value
+    def set_precision(self, value):
+        self._precision = int(value)
 
 class MenuValueSelector(MenuValueNumber):
-    def __init__(self, key="", name="", items=list()):
-        super().__init__(key, name)
+    def __init__(self, key="", name="", items=list(), callback=None):
+        super().__init__(key, name, callback)
         self._type = "selector"
         self._items = items
         self._value = 0
@@ -461,3 +505,93 @@ class MenuValueSelector(MenuValueNumber):
         return self.set(self._value + 1)
     def decrement(self):
         return self.set(self._value - 1)
+
+class MenuGroupEnvelope(MenuGroup):
+    def __init__(self, key="", name="", parent=None):
+        super().__init__(key, name, parent)
+    def append_items(self, callback=None):
+        self.append(MenuValueNumber(
+            key=self._key+"_attack_time",
+            name="Attack Time",
+            value=0.0,
+            min=0.0,
+            max=1.0,
+            step=0.05,
+            precision=2,
+            callback=callback
+        ))
+        self.append(MenuValueNumber(
+            key=self._key+"_decay_time",
+            name="Decay Time",
+            value=0.05,
+            min=0.0,
+            max=1.0,
+            step=0.05,
+            precision=2,
+            callback=callback
+        ))
+        self.append(MenuValueNumber(
+            key=self._key+"_release_time",
+            name="Release Time",
+            value=0,
+            min=0.0,
+            max=1.0,
+            step=0.05,
+            precision=2,
+            callback=callback
+        ))
+        self.append(MenuValueNumber(
+            key=self._key+"_attack_level",
+            name="Attack Level",
+            value=1.0,
+            min=0.0,
+            max=1.0,
+            step=0.05,
+            precision=2,
+            callback=callback
+        ))
+        self.append(MenuValueNumber(
+            key=self._key+"_sustain_level",
+            name="Sustain Level",
+            value=0.75,
+            min=0.0,
+            max=1.0,
+            step=0.05,
+            precision=2,
+            callback=callback
+        ))
+
+class MenuGroupLfo(MenuGroup):
+    def __init__(self, key="",  name="", parent=None):
+        super().__init__(key, name, parent)
+    def append_items(self, callback=None):
+        self.append(MenuValueNumber(
+            key=self._key+"_rate",
+            name="Rate",
+            value=1.0,
+            min=0.0,
+            max=1.0,
+            step=0.05,
+            precision=2,
+            callback=callback
+        ))
+        self.append(MenuValueNumber(
+            key=self._key+"_depth",
+            name="Depth",
+            value=0.0,
+            min=0.0,
+            max=1.0,
+            step=0.05,
+            precision=2,
+            callback=callback
+        ))
+        self.append(MenuValueNumber(
+            key=self._key+"_level",
+            name="Level",
+            value=0.0,
+            min=0.0,
+            max=1.0,
+            step=0.05,
+            precision=2,
+            callback=callback
+        ))

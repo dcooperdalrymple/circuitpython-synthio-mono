@@ -32,17 +32,24 @@ class NeoTrellis:
     COLOR_ACTIVE = COLOR_WHITE
     COLOR_MIDI = COLOR_GRAY
 
+    NOTE_START = 64
+
     def __init__(self, scl, sda, count=16, velocity=127):
         self.count = count
         self.velocity = velocity
 
-        self.onEvent = False
-        self.offEvent = False
+        self.noteOnEvents = []
+        self.noteOffEvents = []
 
         self.i2c = I2C(scl=scl, sda=sda)
         self.trellis = AdafruitNeoTrellis(self.i2c)
         self.buffer = [self.COLOR_OFF for i in range(self.count)]
         self.updatePixels()
+
+    def addNoteOnEvent(self, callback):
+        self.noteOnEvents.append(callback)
+    def addNoteOffEvent(self, callback):
+        self.noteOffEvents.append(callback)
 
     def activateAll(self, animate=True):
         for i in range(self.count):
@@ -105,21 +112,19 @@ class NeoTrellis:
         else:
             return self.COLOR_DEFAULT
 
-    def setOnEvent(self, callback):
-        self.onEvent = callback
-    def setOffEvent(self, callback):
-        self.offEvent = callback
-
-    def updateEvents(self):
+    def update(self):
         self.trellis.sync()
 
+    def numberToNote(self, number):
+        return 15 - number + self.NOTE_START
+
     def handleTrellis(self, event):
-        # TODO: Change number to note and send velocity
+        note = self.numberToNote(event.number)
         if event.edge == AdafruitNeoTrellis.EDGE_RISING:
-            if self.onEvent:
-                self.onEvent(event.number)
+            for callback in self.noteOnEvents:
+                callback(note, self.velocity)
             self.trellis.pixels[event.number] = self.COLOR_ACTIVE
         elif event.edge == AdafruitNeoTrellis.EDGE_FALLING:
-            if self.offEvent:
-                self.offEvent(event.number)
+            for callback in self.noteOffEvents:
+                callback(note)
             self.trellis.pixels[event.number] = self.buffer[event.number]

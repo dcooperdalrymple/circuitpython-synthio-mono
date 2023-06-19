@@ -4,6 +4,8 @@ PATCHDIR = patches
 
 SRCS := code.py config.json menu.json splash.bmp
 
+all: upload
+
 upload: lib src patches
 
 lib: $(LIBDIR)/*

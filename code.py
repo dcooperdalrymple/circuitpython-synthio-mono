@@ -70,7 +70,7 @@ except:
 
 menu.splash_message("Initializing Audio")
 print(":: Initializing Audio ::")
-audio = Audio()
+audio = Audio(config.getAudioRate(), config.getAudioBufferSize())
 if config.getAudioOutput() == "pwm":
     audio.initPWM(board.GP16, board.GP17)
 elif config.getAudioOutput() == "i2s":
@@ -82,55 +82,46 @@ if audio.getType() == None:
 
 menu.splash_message("Initializing Synthio")
 print(":: Initializing Synthio ::")
-synth = Synth(config.getAudioRate(), config.getAudioChannels())
+synth = Synth(config.getAudioRate())
 audio.attachSynth(synth)
 
 print("Buffer Size:", config.getAudioBufferSize())
 print("Sample Rate:", config.getAudioRate())
-print("Channels:", config.getAudioChannels())
-print("Bits:", config.getAudioBits())
+print("Channels:", 2)
+print("Bits:", 16)
 print("Output:", config.getAudioOutput())
 
 menu.splash_message("Initializing Midi")
 print(":: Initializing Midi ::")
 midi = Midi(board.GP4, board.GP5, config.getMidiChannel(), config.getMidiThru())
 print("Channel:", midi.getChannel())
+audio.attachMidi(midi)
 synth.attachMidi(midi)
 
 menu.splash_message("Initializing Interface")
 print(":: Initializing Interface ::")
 
 print("Activating NeoTrellis Keys")
+synth.attachNeoTrellis(neotrellis)
 neotrellis.activateAll(True)
+
+print("Activating Display Menu")
+audio.attachMenu(menu)
+midi.attachMenu(menu)
+synth.attachMenu(menu)
 
 menu.splash_message("Initialization Complete")
 print(":: Initialization Complete ::")
 led.value = False
 
-# Setup Display Menu
-def menu_update(item):
-    if item.get_key() == "volume":
-        config.setAudioVolume(item.get() / 100.0)
-    elif item.get_key() == "midi_channel":
-        config.setMidiChannel(item.get())
-        midi.setChannel(config.getMidiChannel())
-        print("Midi Channel:", config.getMidiChannel())
-    elif item.get_key() == "midi_thru":
-        config.setMidiThru(item.get())
-        midi.setThru(config.getMidiThru())
-        print("Midi Thru:", config.getMidiThru())
-menu.setup(menu_update)
+menu.setup()
 
 while True:
-    # Trigger NeoTrellis Events
-    neotrellis.updateEvents()
-
-    # Update menu
+    neotrellis.update()
     menu.update()
-
-    # Trigger MIDI Events
     midi.update()
-
+    audio.update()
+    synth.update()
     time.sleep(0.02)
 
 print("\n:: Program Shutting Down ::")

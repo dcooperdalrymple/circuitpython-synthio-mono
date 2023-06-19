@@ -6,7 +6,7 @@
     },
     "audio": {
         "bufferSize": 256,
-        "rate": 48000,
+        "rate": 22050,
         "output": "i2s",
         "volume": 1.0
     }

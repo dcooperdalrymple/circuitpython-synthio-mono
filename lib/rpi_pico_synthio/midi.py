@@ -24,11 +24,11 @@ class Midi:
     TIMEOUT = 0.001
 
     def __init__(self, tx, rx, channel=1, thru=False):
-        self.noteOnEvent = None
-        self.noteOffEvent = None
-        self.controlChangeEvent = None
-        self.pitchBendEvent = None
-        self.programChangeEvent = None
+        self.noteOnEvents = []
+        self.noteOffEvents = []
+        self.controlChangeEvents = []
+        self.pitchBendEvents = []
+        self.programChangeEvents = []
 
         self.uart = UART(
             tx=tx,
@@ -47,6 +47,17 @@ class Midi:
 
         self.setChannel(channel)
         self.setThru(thru)
+
+    def addNoteOnEvent(self, callback):
+        self.noteOnEvents.append(callback)
+    def addNoteOffEvent(self, callback):
+        self.noteOffEvents.append(callback)
+    def addControlChangeEvent(self, callback):
+        self.controlChangeEvents.append(callback)
+    def addPitchBendEvent(self, callback):
+        self.pitchBendEvents.append(callback)
+    def addProgramChangeEvent(self, callback):
+        self.programChangeEvents.append(callback)
 
     def setChannel(self, channel):
         if channel <= 16 or channel >= 1:
@@ -71,17 +82,26 @@ class Midi:
                 midi.send(msg)
 
             if isinstance(msg, NoteOn) and msg.velocity != 0:
-                if self.noteOnEvent:
-                    self.noteOnEvent(msg.note, msg.velocity / 127.0)
+                for callback in self.noteOnEvents:
+                    callback(msg.note, msg.velocity / 127.0)
             elif isinstance(msg, NoteOff) or (isinstance(msg, NoteOn) and msg.velocity == 0):
-                if self.noteOffEvent:
-                    self.noteOffEvent(msg.note)
+                for callback in self.noteOffEvents:
+                    callback(msg.note)
             elif isinstance(msg, ControlChange):
-                if self.controlChangeEvent:
-                    self.controlChangeEvent(msg.control, msg.value / 127.0)
+                for callback in self.controlChangeEvents:
+                    callback(msg.control, msg.value / 127.0)
             elif isinstance(msg, PitchBend):
-                if self.pitchBendEvent:
-                    self.pitchBendEvent((msg.pitch_bend - 8192) / 8192)
+                for callback in self.pitchBendEvents:
+                    callback((msg.pitch_bend - 8192) / 8192)
             elif isinstance(msg, ProgramChange):
-                if self.programChangeEvent:
-                    self.programChangeEvent(msg.patch)
+                for callback in self.programChangeEvents:
+                    callback(msg.patch)
+
+    def menuUpdate(self, item):
+        key = item.get_key()
+        if key == "midi_channel":
+            midi.setChannel(item.get())
+        elif key == "midi_thru":
+            midi.setThru(item.get())
+    def attachMenu(self, menu):
+        menu.addItemEvent(self.menuUpdate)

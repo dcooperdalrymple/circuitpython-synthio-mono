@@ -33,6 +33,200 @@
             ]
         },
         {
+            "key": "synth",
+            "name": "Synth",
+            "type": "group",
+            "items": [
+                {
+                    "key": "velocity_amount",
+                    "name": "Velocity Amount",
+                    "type": "number",
+                    "value": 1.0,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.1,
+                    "precision": 1
+                },
+                {
+                    "key": "bend_amount",
+                    "name": "Bend Amount",
+                    "type": "number",
+                    "value": 1.0,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.1,
+                    "precision": 1
+                },
+                {
+                    "key": "amplitude_envelope",
+                    "name": "Envelope",
+                    "type": "envelope"
+                },
+                {
+                    "key": "filter_type",
+                    "name": "Filter",
+                    "type": "selector",
+                    "value": "lpf",
+                    "items": [
+                        "lpf",
+                        "hpf",
+                        "bpf"
+                    ]
+                },
+                {
+                    "key": "filter_frequency",
+                    "name": "Filter Frequency",
+                    "type": "number",
+                    "value": 1.0,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.1,
+                    "precision": 1
+                },
+                {
+                    "key": "filter_resonance",
+                    "name": "Filter Resonance",
+                    "type": "number",
+                    "value": 1.0,
+                    "min": 0.0,
+                    "max": 1.0,
+                    "step": 0.1,
+                    "precision": 1
+                },
+                {
+                    "key": "filter_lfo",
+                    "name": "Filter LFO",
+                    "type": "lfo"
+                },
+                {
+                    "key": "oscillator_0",
+                    "name": "Oscillator 1",
+                    "type": "group",
+                    "items": [
+                        {
+                            "key": "osc0_waveform",
+                            "name": "Waveform",
+                            "type": "selector",
+                            "value": "saw",
+                            "items": [
+                                "saw",
+                                "reverse_saw",
+                                "square",
+                                "sine",
+                                "noise"
+                            ]
+                        },
+                        {
+                            "key": "osc0_coarse_tune",
+                            "name": "Coarse Tune",
+                            "type": "number",
+                            "value": 0,
+                            "min": -24,
+                            "max": 24
+                        },
+                        {
+                            "key": "osc0_fine_tune",
+                            "name": "Fine Tune",
+                            "type": "number",
+                            "value": 0.0,
+                            "min": -1.0,
+                            "max": 1.0,
+                            "step": 0.05,
+                            "precision": 2
+                        },
+                        {
+                            "key": "osc0_glide",
+                            "name": "Glide",
+                            "type": "number",
+                            "value": 0.0,
+                            "min": 0.0,
+                            "max": 1.0,
+                            "step": 0.1,
+                            "precision": 1
+                        },
+                        {
+                            "key": "osc0_amplitude_lfo",
+                            "name": "Amplitude LFO",
+                            "type": "lfo"
+                        },
+                        {
+                            "key": "osc0_frequency_lfo",
+                            "name": "Frequency LFO",
+                            "type": "lfo"
+                        },
+                        {
+                            "key": "osc0_panning_lfo",
+                            "name": "Pan LFO",
+                            "type": "lfo"
+                        }
+                    ]
+                },
+                {
+                    "key": "oscillator_1",
+                    "name": "Oscillator 2",
+                    "type": "group",
+                    "items": [
+                        {
+                            "key": "osc1_waveform",
+                            "name": "Waveform",
+                            "type": "selector",
+                            "value": "saw",
+                            "items": [
+                                "saw",
+                                "reverse_saw",
+                                "square",
+                                "sine",
+                                "noise"
+                            ]
+                        },
+                        {
+                            "key": "osc1_coarse_tune",
+                            "name": "Coarse Tune",
+                            "type": "number",
+                            "value": 0,
+                            "min": -24,
+                            "max": 24
+                        },
+                        {
+                            "key": "osc1_fine_tune",
+                            "name": "Fine Tune",
+                            "type": "number",
+                            "value": 0.0,
+                            "min": -1.0,
+                            "max": 1.0,
+                            "step": 0.05,
+                            "precision": 2
+                        },
+                        {
+                            "key": "osc1_glide",
+                            "name": "Glide",
+                            "type": "number",
+                            "value": 0.0,
+                            "min": 0.0,
+                            "max": 1.0,
+                            "step": 0.1,
+                            "precision": 1
+                        },
+                        {
+                            "key": "osc1_amplitude_lfo",
+                            "name": "Amplitude LFO",
+                            "type": "lfo"
+                        },
+                        {
+                            "key": "osc1_frequency_lfo",
+                            "name": "Frequency LFO",
+                            "type": "lfo"
+                        },
+                        {
+                            "key": "osc1_panning_lfo",
+                            "name": "Pan LFO",
+                            "type": "lfo"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
             "key": "info",
             "name": "Device Info",
             "type": "group",

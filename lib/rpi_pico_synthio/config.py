@@ -79,13 +79,9 @@ class Config:
     def getAudioBufferSize(self):
         return self.getData(256, "audio", "bufferSize")
     def getAudioRate(self):
-        return self.getData(48000, "audio", "rate")
+        return self.getData(22050, "audio", "rate")
     def getAudioOutput(self):
         return self.getData("i2s", "audio", "output")
-    def getAudioChannels(self):
-        return 2
-    def getAudioBits(self):
-        return 16
 
     def getAudioVolume(self):
         return self.getData(1.0, "audio", "volume")
