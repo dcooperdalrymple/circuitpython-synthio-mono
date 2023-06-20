@@ -11,12 +11,13 @@ from busio import UART
 import adafruit_midi
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.note_off import NoteOff
-from adafruit_midi.program_change import ProgramChange
 
 # Program Constants
 
-MIDI_CHANNEL      = 10
-MIDI_THRU         = False
+MIDI_CHANNEL    = 1
+MIDI_THRU       = False
+MIDI_TX         = board.GP4
+MIDI_RX         = board.GP5
 
 # Initialize status LED
 led = DigitalInOut(board.LED)
@@ -34,8 +35,8 @@ print("https://dcdalrymple.com/rpi-pico-synthio/")
 
 print("\n:: Initializing Midi ::")
 uart = UART(
-    tx=board.GP4,
-    rx=board.GP5,
+    tx=MIDI_TX,
+    rx=MIDI_RX,
     baudrate=31250,
     timeout=0.001
 )
