@@ -1,249 +1,53 @@
 {
-    "key": "main",
-    "name": "Main Menu",
-    "type": "group",
-    "items": [
-        {
-            "key": "volume",
-            "name": "Volume",
-            "type": "number",
-            "value": 100,
-            "min": 0,
-            "max": 100
-        },
-        {
-            "key": "settings",
-            "name": "Settings",
-            "type": "group",
-            "items": [
-                {
-                    "key": "midi_channel",
-                    "name": "Midi Channel",
-                    "type": "number",
-                    "value": 1,
-                    "min": 1,
-                    "max": 16
-                },
-                {
-                    "key": "midi_thru",
-                    "name": "Midi Thru",
-                    "type": "bool",
-                    "value": false
-                }
-            ]
-        },
-        {
-            "key": "synth",
-            "name": "Synth",
-            "type": "group",
-            "items": [
-                {
-                    "key": "velocity_amount",
-                    "name": "Velocity Amount",
-                    "type": "number",
-                    "value": 1.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.1,
-                    "precision": 1
-                },
-                {
-                    "key": "bend_amount",
-                    "name": "Bend Amount",
-                    "type": "number",
-                    "value": 1.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.1,
-                    "precision": 1
-                },
-                {
-                    "key": "amplitude_envelope",
-                    "name": "Envelope",
-                    "type": "envelope"
-                },
-                {
-                    "key": "filter_type",
-                    "name": "Filter",
-                    "type": "selector",
-                    "value": "lpf",
-                    "items": [
-                        "lpf",
-                        "hpf",
-                        "bpf"
-                    ]
-                },
-                {
-                    "key": "filter_frequency",
-                    "name": "Filter Frequency",
-                    "type": "number",
-                    "value": 1.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.1,
-                    "precision": 1
-                },
-                {
-                    "key": "filter_resonance",
-                    "name": "Filter Resonance",
-                    "type": "number",
-                    "value": 1.0,
-                    "min": 0.0,
-                    "max": 1.0,
-                    "step": 0.1,
-                    "precision": 1
-                },
-                {
-                    "key": "filter_lfo",
-                    "name": "Filter LFO",
-                    "type": "lfo"
-                },
-                {
-                    "key": "oscillator_0",
-                    "name": "Oscillator 1",
-                    "type": "group",
-                    "items": [
-                        {
-                            "key": "osc0_waveform",
-                            "name": "Waveform",
-                            "type": "selector",
-                            "value": "saw",
-                            "items": [
-                                "saw",
-                                "reverse_saw",
-                                "square",
-                                "sine",
-                                "noise"
-                            ]
-                        },
-                        {
-                            "key": "osc0_coarse_tune",
-                            "name": "Coarse Tune",
-                            "type": "number",
-                            "value": 0,
-                            "min": -24,
-                            "max": 24
-                        },
-                        {
-                            "key": "osc0_fine_tune",
-                            "name": "Fine Tune",
-                            "type": "number",
-                            "value": 0.0,
-                            "min": -1.0,
-                            "max": 1.0,
-                            "step": 0.05,
-                            "precision": 2
-                        },
-                        {
-                            "key": "osc0_glide",
-                            "name": "Glide",
-                            "type": "number",
-                            "value": 0.0,
-                            "min": 0.0,
-                            "max": 1.0,
-                            "step": 0.1,
-                            "precision": 1
-                        },
-                        {
-                            "key": "osc0_amplitude_lfo",
-                            "name": "Amplitude LFO",
-                            "type": "lfo"
-                        },
-                        {
-                            "key": "osc0_frequency_lfo",
-                            "name": "Frequency LFO",
-                            "type": "lfo"
-                        },
-                        {
-                            "key": "osc0_panning_lfo",
-                            "name": "Pan LFO",
-                            "type": "lfo"
-                        }
-                    ]
-                },
-                {
-                    "key": "oscillator_1",
-                    "name": "Oscillator 2",
-                    "type": "group",
-                    "items": [
-                        {
-                            "key": "osc1_waveform",
-                            "name": "Waveform",
-                            "type": "selector",
-                            "value": "saw",
-                            "items": [
-                                "saw",
-                                "reverse_saw",
-                                "square",
-                                "sine",
-                                "noise"
-                            ]
-                        },
-                        {
-                            "key": "osc1_coarse_tune",
-                            "name": "Coarse Tune",
-                            "type": "number",
-                            "value": 0,
-                            "min": -24,
-                            "max": 24
-                        },
-                        {
-                            "key": "osc1_fine_tune",
-                            "name": "Fine Tune",
-                            "type": "number",
-                            "value": 0.0,
-                            "min": -1.0,
-                            "max": 1.0,
-                            "step": 0.05,
-                            "precision": 2
-                        },
-                        {
-                            "key": "osc1_glide",
-                            "name": "Glide",
-                            "type": "number",
-                            "value": 0.0,
-                            "min": 0.0,
-                            "max": 1.0,
-                            "step": 0.1,
-                            "precision": 1
-                        },
-                        {
-                            "key": "osc1_amplitude_lfo",
-                            "name": "Amplitude LFO",
-                            "type": "lfo"
-                        },
-                        {
-                            "key": "osc1_frequency_lfo",
-                            "name": "Frequency LFO",
-                            "type": "lfo"
-                        },
-                        {
-                            "key": "osc1_panning_lfo",
-                            "name": "Pan LFO",
-                            "type": "lfo"
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "key": "info",
-            "name": "Device Info",
-            "type": "group",
-            "items": [
-                {
-                    "key": "info_name",
-                    "name": "Name",
-                    "type": "string",
-                    "value": "rpi-pico-synthio"
-                },
-                {
-                    "key": "info_version",
-                    "name": "Version",
-                    "type": "string",
-                    "value": "0.1.0"
-                }
-            ]
-        }
-    ]
+    "Global": {
+        "midi_channel": "MIDI Channel",
+        "midi_thru": "MIDI Thru",
+
+        "volume": "Volume",
+        "portamento": "Glide",
+        "keyboard_type": "Note Type",
+        "velocity_amount": "Velocity Amount",
+        "bend_amount": "Bend Amount"
+    },
+    "Voice": {
+        "filter_type": "Filter",
+        "filter_frequency": "Frequency",
+        "filter_resonance": "Resonance",
+        "pan": "Pan",
+        "attack_time": "Attack Time",
+        "decay_time": "Decay Time",
+        "release_time": "Release Time",
+        "attack_level": "Attack Level",
+        "sustain_level": "Sustain Level"
+    },
+    "Oscillator 1": {
+        "portamento_0": "Glide",
+        "bend_amount_0": "Bend Amount",
+        "waveform_0": "Waveform",
+        "level_0": "Level",
+        "coarse_tune_0": "Coarse Tune",
+        "fine_tune_0": "Fine Tune",
+        "tremolo_rate_0": "Tremolo Rate",
+        "tremolo_depth_0": "Tremolo Depth",
+        "vibrato_rate_0": "Vibrato Rate",
+        "vibrato_depth_0": "Vibrato Depth",
+        "pan_0": "Pan",
+        "pan_rate_0": "Panning Rate",
+        "pan_depth_0": "Panning Depth"
+    },
+    "Oscillator 2": {
+        "portamento_1": "Glide",
+        "bend_amount_1": "Bend Amount",
+        "waveform_1": "Waveform",
+        "level_1": "Level",
+        "coarse_tune_1": "Coarse Tune",
+        "fine_tune_1": "Fine Tune",
+        "tremolo_rate_1": "Tremolo Rate",
+        "tremolo_depth_1": "Tremolo Depth",
+        "vibrato_rate_1": "Vibrato Rate",
+        "vibrato_depth_1": "Vibrato Depth",
+        "pan_1": "Pan",
+        "pan_rate_1": "Panning Rate",
+        "pan_depth_1": "Panning Depth"
+    }
 }
