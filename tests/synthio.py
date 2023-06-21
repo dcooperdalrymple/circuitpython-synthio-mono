@@ -314,7 +314,7 @@ class Voice:
         if update:
             self.update_bend()
 
-voice = Voice()
+voices = [Voice(), Voice()]
 
 print("Managing Keyboard")
 
@@ -381,9 +381,11 @@ class Keyboard:
     def update(self):
         note = self.get()
         if not note:
-            voice.release()
+            for voice in voices:
+                voice.release()
         else:
-            voice.press(note[1], note[2])
+            for voice in voices:
+                voice.press(note[0], note[1])
 
 keyboard = Keyboard()
 
@@ -394,53 +396,205 @@ def note_on(notenum, velocity):
 def note_off(notenum):
     keyboard.remove(notenum)
 
-def control_change(control, value):
-    if control == 7: # Volume
+parameters = [
+    "volume",
+    "portamento",
+    "keyboard_type",
+    "velocity_amount",
+    "bend_amount",
+    "filter_type",
+    "filter_frequency",
+    "filter_resonance",
+    "pan",
+    "attack_time",
+    "decay_time",
+    "release_time",
+    "attack_level",
+    "sustain_level",
+
+    "portamento_0",
+    "bend_amount_0",
+    "waveform_0",
+    "level_0",
+    "coarse_tune_0",
+    "fine_tune_0",
+    "tremolo_rate_0",
+    "tremolo_depth_0",
+    "vibrato_rate_0",
+    "vibrato_depth_0",
+    "pan_rate_0",
+    "pan_depth_0",
+    "pan_0",
+
+    "portamento_1",
+    "bend_amount_1",
+    "waveform_1",
+    "level_1",
+    "coarse_tune_1",
+    "fine_tune_1",
+    "tremolo_rate_1",
+    "tremolo_depth_1",
+    "vibrato_rate_1",
+    "vibrato_depth_1",
+    "pan_rate_1",
+    "pan_depth_1",
+    "pan_1",
+]
+
+cc_map = {
+    7: "volume",
+    5: "portamento",
+    9: "keyboard_type",
+    11: "velocity_amount",
+    14: "bend_amount",
+    15: "filter_type",
+    12: "filter_frequency",
+    13: "filter_resonance",
+    10: "pan",
+    16: "attack_time",
+    17: "decay_time",
+    18: "release_time",
+    19: "attack_level",
+    20: "sustain_level",
+
+    21: "portamento_0",
+    22: "bend_amount_0",
+    23: "waveform_0",
+    24: "level_0",
+    25: "coarse_tune_0",
+    26: "fine_tune_0",
+    27: "tremolo_rate_0",
+    28: "tremolo_depth_0",
+    29: "vibrato_rate_0",
+    30: "vibrato_depth_0",
+    31: "pan_rate_0",
+    70: "pan_depth_0",
+    71: "pan_0",
+
+    72: "portamento_1",
+    73: "bend_amount_1",
+    74: "waveform_1",
+    75: "level_1",
+    76: "coarse_tune_1",
+    77: "fine_tune_1",
+    78: "tremolo_rate_1",
+    79: "tremolo_depth_1",
+    80: "vibrato_rate_1",
+    81: "vibrato_depth_1",
+    82: "pan_rate_1",
+    83: "pan_depth_1",
+    84: "pan_1",
+
+    85: "mod_parameter",
+}
+cc_mod = list(parameters)[0]
+
+def set_parameter(name, value, update=True):
+    if not name in parameters:
+        return
+
+    index = name[-1]
+    if index.isdigit():
+        index = int(index)
+        name = name[:len(name)-2]
+        if index >= len(voices):
+            return
+    else:
+        index = None
+
+    param_voices = None
+    if index:
+        param_voices = [voice[index]]
+    else:
+        param_voices = voices
+
+    if name == "volume":
         mixer.voice[0].level = value
+    elif name == "portamento":
+        pass
+    elif name == "keyboard_type":
+        keyboard.set_type(value)
+    elif name == "velocity_amount":
+        for voice in param_voices:
+            voice.velocity_amount = value
+    elif name == "bend_amount":
+        for voice in param_voices:
+            voice.set_bend_amount(value, update)
+    elif name == "mod_parameter":
+        cc_mod = map_array(value, parameters)
 
-    elif control == 70: # Waveform
-        voice.set_waveform(value)
+    # TODO: Global filter
+    elif name == "filter_type":
+        for voice in param_voices:
+            voice.set_filter_type(value, update)
+    elif name == "filter_frequency":
+        for voice in param_voices:
+            voice.set_filter_frequency(value, update)
+    elif name == "filter_resonance":
+        for voice in param_voices:
+            voice.set_filter_resonance(value, update)
 
-    elif control == 12: # Tremolo Rate
-        voice.note.amplitude.rate = value
-    elif control == 92: # Tremolo Depth
-        voice.note.amplitude.scale = value
-    elif control == 13: # Tremolo Level Offset
-        voice.note.amplitude.offset = value
+    elif name == "waveform":
+        for voice in param_voices:
+            voice.set_waveform(value, update)
+    elif name == "level":
+        for voice in param_voices:
+            voice.note.amplitude.offset = value
+    elif name == "coarse_tune":
+        for voice in param_voices:
+            voice.set_coarse_tune(value, update)
+    elif name == "fine_tune":
+        for voice in param_voices:
+            voice.set_fine_tune(value, update)
 
-    elif control == 76: # Vibrato Rate
-        voice.note.bend.rate = value
-    elif control == 77: # Vibrato Depth
-        voice.note.bend.scale = value
-    elif control == 78: # Pitch Bend Amount
-        voice.set_bend_amount(value)
+    elif name == "tremolo_rate":
+        for voice in param_voices:
+            voice.note.amplitude.rate = value
+    elif name == "tremolo_depth":
+        for voice in param_voices:
+            voice.note.amplitude.scale = value
 
-    elif control == 16: # Pan Rate
-        voice.note.panning.rate = value
-    elif control == 17: # Pan Depth
-        voice.note.panning.scale = value
-    elif control == 18: # Pan Offset
-        voice.note.panning.offset = value
+    elif name == "vibrato_rate":
+        for voice in param_voices:
+            voice.note.bend.rate = value
+    elif name == "vibrato_depth":
+        for voice in param_voices:
+            voice.note.bend.scale = value
 
-    elif control == 71: # Velocity Amount
-        voice.velocity_amount = value
-    elif control == 19: # Filter Type
-        voice.set_filter_type(value)
-    elif control == 80: # Filter Frequency
-        voice.set_filter_frequency(value)
-    elif control == 81: # Filter Resonance
-        voice.set_filter_resonance(value)
+    elif name == "pan_rate":
+        for voice in param_voices:
+            voice.note.panning.rate = value
+    elif name == "pan_depth":
+        for voice in param_voices:
+            voice.note.panning.scale = value
+    elif name == "pan":
+        for voice in param_voices:
+            voice.note.panning.offset = map_value(value, -1.0, 1.0)
 
-    elif control == 73: # Envelope Attack Time
-        voice.set_envelope_attack_time(value)
-    elif control == 72: # Envelope Release Time
-        voice.set_envelope_release_time(value)
-    elif control == 82: # Envelope Decay Time
-        voice.set_envelope_decay_time(value)
-    elif control == 83: # Envelope Attack Level
-        voice.set_envelope_attack_level(value)
-    elif control == 79: # Envelope Sustain Level
-        voice.set_envelope_sustain_level(value)
+    elif name == "attack_time":
+        for voice in param_voices:
+            voice.set_envelope_attack_time(value, update)
+    elif name == "decay_time":
+        for voice in param_voices:
+            voice.set_envelope_decay_time(value, update)
+    elif name == "release_time":
+        for voice in param_voices:
+            voice.set_envelope_release_time(value, update)
+    elif name == "attack_level":
+        for voice in param_voices:
+            voice.set_envelope_attack_level(value, update)
+    elif name == "sustain_level":
+        for voice in param_voices:
+            voice.set_envelope_sustain_level(value, update)
+
+def control_change(control, value):
+    name = None
+    if control == 1: # Mod Wheel
+        name = cc_map.get(cc_mod, None)
+    else:
+        name = cc_map.get(control, None)
+    if name:
+        set_parameter(name, value)
 
 def pitch_bend(value):
     voice.set_bend(value)
