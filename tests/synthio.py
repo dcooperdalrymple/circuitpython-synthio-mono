@@ -29,8 +29,8 @@ import ulab.numpy as numpy
 
 # Program Constants
 
-MIDI_CHANNEL        = 1
-MIDI_THRU           = False
+MIDI_CHANNEL_MAX    = 16
+MIDI_CHANNEL_MIN    = 1
 MIDI_TX             = board.GP4
 MIDI_RX             = board.GP5
 
@@ -89,8 +89,8 @@ print("MIDI Controller")
 midi = adafruit_midi.MIDI(
     midi_in=uart,
     midi_out=uart,
-    in_channel=MIDI_CHANNEL-1,
-    out_channel=MIDI_CHANNEL-1,
+    in_channel=0,
+    out_channel=0,
     debug=False
 )
 print("Channel:", midi.in_channel+1)
@@ -101,6 +101,7 @@ print("I2S Audio Output")
 audio = I2SOut(I2S_CLK, I2S_WS, I2S_DATA)
 
 print("Audio Mixer")
+midi_thru = False
 mixer = Mixer(
     voice_count=1,
     sample_rate=SAMPLE_RATE,
@@ -142,6 +143,11 @@ def map_value_centered(value, min_value, center_value, max_value):
         return map_value(value * 2, min_value, center_value)
     else:
         return center_value
+def map_boolean(value):
+    if type(value) == type(False):
+        return value
+    else:
+        return value >= 0.5
 def map_array(value, arr):
     index = math.floor(max(min(value * len(arr), len(arr) - 1), 0))
     return arr[index]
@@ -339,12 +345,8 @@ class Keyboard:
     def get_sustain(self):
         return self.sustain
     def set_sustain(self, value, update=True):
-        val = None
-        if type(value) == type(False):
-            val = value
-        elif type(value) == type(0.5):
-            val = value >= 0.5
-        if not val is None and val != self.sustain:
+        value = map_boolean(value)
+        if value != self.sustain:
             self.sustain = val
             self.sustained = []
             if self.sustain:
@@ -427,6 +429,9 @@ def note_off(notenum):
     keyboard.remove(notenum)
 
 parameters = [
+    "midi_channel",
+    "midi_thru",
+
     "volume",
     "portamento",
     "keyboard_type",
@@ -538,7 +543,14 @@ def set_parameter(name, value, update=True):
     else:
         param_voices = voices
 
-    if name == "volume":
+    if name == "midi_channel":
+        value = map_value(value, MIDI_CHANNEL_MIN, MIDI_CHANNEL_MAX)
+        midi.in_channel = value
+        midi.out_channel = value
+    elif name == "midi_thru":
+        midi_thru = map_boolean(value)
+
+    elif name == "volume":
         mixer.voice[0].level = value
     elif name == "portamento":
         pass
@@ -667,7 +679,7 @@ def pitch_bend(value):
 while True:
     msg = midi.receive()
     if msg != None:
-        if MIDI_THRU:
+        if midi_thru:
             midi.send(msg)
         if isinstance(msg, NoteOn):
             #print("Note On:", msg.note, msg.velocity / 127.0)
