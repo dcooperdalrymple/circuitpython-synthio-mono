@@ -29,6 +29,12 @@ from adafruit_midi.pitch_bend import PitchBend
 from audiobusio import I2SOut
 from audiomixer import Mixer
 
+from busio import I2C
+import displayio
+import adafruit_displayio_ssd1306
+import terminalio
+from adafruit_display_text import label
+
 import synthio
 import random
 import ulab.numpy as numpy
@@ -41,10 +47,18 @@ MIDI_CHANNEL_MAX    = 16
 MIDI_CHANNEL_MIN    = 1
 MIDI_TX             = board.GP4
 MIDI_RX             = board.GP5
+MIDI_UPDATE         = 0.05
 
 I2S_CLK             = board.GP0
 I2S_WS              = board.GP1
 I2S_DATA            = board.GP2
+
+DISPLAY_ADDRESS     = 0x3c
+DISPLAY_WIDTH       = 128
+DISPLAY_HEIGHT      = 32
+DISPLAY_I2C_SCL     = board.GP21
+DISPLAY_I2C_SDA     = board.GP20
+DISPLAY_UPDATE      = 0.2
 
 SAMPLE_RATE         = 22050
 BUFFER_SIZE         = 4096
@@ -69,6 +83,9 @@ ENVELOPE_TIME_MIN   = 0.05
 BEND_AMOUNT_MAX     = 2.0
 BEND_AMOUNT_MIN     = 1.0/12.0
 
+# Release REPL
+displayio.release_displays()
+
 # Initialize status LED
 led = DigitalInOut(board.LED)
 led.direction = Direction.OUTPUT
@@ -82,6 +99,80 @@ print("rpi-pico-synthio")
 print("Version 1.0")
 print("Cooper Dalrymple, 2023")
 print("https://dcdalrymple.com/rpi-pico-synthio/")
+
+print("\n:: Initializing Display ::")
+
+class Display:
+    def __init__(self):
+        self.i2c = I2C(
+            scl=DISPLAY_I2C_SCL,
+            sda=DISPLAY_I2C_SDA
+        )
+        self.bus = displayio.I2CDisplay(
+            self.i2c,
+            device_address=DISPLAY_ADDRESS
+        )
+        self.driver = adafruit_displayio_ssd1306.SSD1306(
+            self.bus,
+            width=DISPLAY_WIDTH,
+            height=DISPLAY_HEIGHT
+        )
+
+        self.group = displayio.Group()
+        self.driver.show(self.group)
+
+        self.bg_bitmap = displayio.Bitmap(DISPLAY_WIDTH, DISPLAY_HEIGHT, 1)
+        self.bg_palette = displayio.Palette(1)
+        self.bg_palette[0] = 0x000000
+        self.bg_sprite = displayio.TileGrid(
+            self.bg_bitmap,
+            pixel_shader=self.bg_palette,
+            x=0,
+            y=0
+        )
+        self.group.append(self.bg_sprite)
+
+        # TODO: Scrolling Labels
+
+        self.title_label = label.Label(
+            terminalio.FONT,
+            text="",
+            color=0xFFFFFF,
+            anchor_point=(0.5, 0.5),
+            anchored_position=(DISPLAY_WIDTH//2,DISPLAY_HEIGHT//4)
+        )
+        self.group.append(self.title_label)
+
+        self.value_label = label.Label(
+            terminalio.FONT,
+            text="",
+            color=0xFFFFFF,
+            anchor_point=(0.5, 0.5),
+            anchored_position=(DISPLAY_WIDTH//2,DISPLAY_HEIGHT//4*3)
+        )
+        self.group.append(self.value_label)
+
+        self.queued = None
+
+    def set_title(self, text):
+        self.title_label.text = str(text)
+
+    def set_value(self, text):
+        if type(text) == type(0.5):
+            text = "{:.2f}".format(text)
+        self.value_label.text = str(text)
+
+    def queue(self, title, value):
+        self.queued = (title, value)
+    def update(self):
+        if self.queued:
+            self.set_title(self.queued[0])
+            self.set_value(self.queued[1])
+            self.queued = None
+
+display = Display()
+display.set_title("rpi-pico-synthio v1.0")
+display.set_value("Loading...")
 
 print("\n:: Initializing Midi ::")
 
@@ -535,6 +626,7 @@ def save_json(path, data):
 
 parameters = read_json("/parameters.json")
 midi_map = read_json("/midi.json")
+menu_groups = read_json("/menu.json")
 
 exclude_mod_parameters = [
     "midi_channel",
@@ -675,7 +767,7 @@ def get_parameter(name, format=False, translate=True):
             return unmap_boolean(midi_thru)
 
     elif name == "volume":
-        return value
+        return mixer.voice[0].level
     elif name == "portamento":
         return None # NOTE: Not implemented
     elif name == "keyboard_type":
@@ -842,9 +934,25 @@ def save_patch(index=0, name="Patch"):
 def read_first_patch():
     return read_patch(0)
 
+def get_parameter_label(name):
+    if not menu_groups:
+        return name
+    for group in menu_groups:
+        label = menu_groups[group].get(name, None)
+        if label:
+            return label
+    return name
+last_parameter_name = None
+last_parameter_label = None
+def display_parameter(name):
+    if not last_parameter_name or last_parameter_name != name:
+        last_parameter_label = get_parameter_label(name)
+    display.queue(last_parameter_label, get_parameter(name, True))
+
 read_first_patch()
 
 print("\n:: Initialization Complete ::")
+display.set_value("Ready!")
 
 def note_on(notenum, velocity):
     keyboard.append(notenum, velocity)
@@ -862,6 +970,8 @@ def control_change(control, value):
         name = midi_map.get(str(control), None)
     if name:
         set_parameter(name, value)
+        if control != 1:
+            display_parameter(name)
 
 def pitch_bend(value):
     for voice in voices:
@@ -898,11 +1008,29 @@ def process_midi_msg(msg):
         if ble and ble.connected and ble_midi:
             ble_midi.send(msg)
 
+def process_midi_msgs(midi, limit=32):
+    while limit>0:
+        msg = uart_midi.receive()
+        if not msg:
+            break
+        process_midi_msg(msg)
+        limit = limit - 1
+
+last_midi_now = 0
+last_display_now = 0
 while True:
-    process_midi_msg(uart_midi.receive())
-    process_midi_msg(usb_midi.receive())
-    if ble and ble.connected and ble_midi:
-        process_midi_msg(ble_midi.receive())
+    now = time.monotonic()
+
+    if now >= last_midi_now + MIDI_UPDATE:
+        last_midi_now = now
+        process_midi_msgs(uart_midi)
+        process_midi_msgs(usb_midi)
+        if ble and ble.connected and ble_midi:
+            process_midi_msgs(ble_midi)
+
+    if now >= last_display_now + DISPLAY_UPDATE:
+        last_display_now = now
+        display.update()
 
 print("\n:: Deinitializing ::")
 
@@ -915,6 +1043,9 @@ mixer.deinit()
 
 print("Audio")
 audio.deinit()
+
+print("Display")
+displayio.release_displays()
 
 print("\n:: Process Ended ::")
 led.value = False

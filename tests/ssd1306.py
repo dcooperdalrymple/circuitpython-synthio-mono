@@ -49,7 +49,7 @@ display.show(splash)
 
 color_bitmap = displayio.Bitmap(DISPLAY_WIDTH, DISPLAY_HEIGHT, 1)
 color_palette = displayio.Palette(1)
-color_palette[0] = 0xFFFFFF # Black
+color_palette[0] = 0xFFFFFF # White
 
 bg_sprite = displayio.TileGrid(color_bitmap, pixel_shader=color_palette, x=0, y=0)
 splash.append(bg_sprite)
