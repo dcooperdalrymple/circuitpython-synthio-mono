@@ -9,6 +9,9 @@ import board
 
 from digitalio import DigitalInOut, Direction, Pull
 
+import json
+import storage
+
 from busio import UART
 import adafruit_midi
 from adafruit_midi.note_on import NoteOn
@@ -232,7 +235,9 @@ class Voice:
         self.waveform = map_dict(value, waveforms)
         if update and self.waveform != self._waveform:
             self._waveform = self.waveform
-            self.note.waveform = self.get_waveform()
+            self.update_waveform()
+    def update_waveform(self):
+        self.note.waveform = self.get_waveform()
     def get_waveform(self):
         return waveforms.get(self.waveform, None)
 
@@ -611,6 +616,39 @@ def set_parameter(name, value, update=True):
     elif name == "sustain_level":
         for voice in param_voices:
             voice.set_envelope_sustain_level(value, update)
+
+def read_json(path):
+    try:
+        with open(path, "r") as file:
+            data = json.load(file)
+    except:
+        print("Failed to read JSON file:", path)
+        return None
+    return data
+
+def save_json(path, data):
+    if not data:
+        return False
+    try:
+        with open(path, "w") as file:
+            json.dump(data, file)
+    except:
+        print("Failed to write JSON file:", path)
+        return False
+    return True
+
+def read_patch(path):
+    data = read_json(path)
+    if not data:
+        return False
+    for name in data:
+        set_parameter(name, data[name], False)
+    for voice in voices:
+        voice.update_waveform()
+        voice.update_filter()
+        voice.update_envelope()
+        voice.update_bend()
+    keyboard.update()
 
 def control_change(control, value):
     name = None
