@@ -904,5 +904,17 @@ while True:
     if ble and ble.connected and ble_midi:
         process_midi_msg(ble_midi.receive())
 
+print("\n:: Deinitializing ::")
+
+print("Synthesizer")
+synth.release_all()
+synth.deinit()
+
+print("Mixer")
+mixer.deinit()
+
+print("Audio")
+audio.deinit()
+
 print("\n:: Process Ended ::")
 led.value = False
