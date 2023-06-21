@@ -13,6 +13,10 @@ import json
 import storage
 
 from busio import UART
+import usb_midi
+import adafruit_ble
+from adafruit_ble.advertising.standard import ProvideServicersAdvertisement
+import adafruit_ble.midi
 import adafruit_midi
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.note_off import NoteOff
@@ -84,16 +88,39 @@ uart = UART(
     baudrate=31250,
     timeout=0.001
 )
-
-print("MIDI Controller")
-midi = adafruit_midi.MIDI(
+uart_midi = adafruit_midi.MIDI(
     midi_in=uart,
     midi_out=uart,
     in_channel=0,
     out_channel=0,
     debug=False
 )
-print("Channel:", midi.in_channel+1)
+
+print("USB")
+usb_midi = adafruit_midi.MIDI(
+    midi_in=usb_midi.ports[0],
+    midi_out=usb_midi.ports[1],
+    in_channel=0,
+    out_channel=0,
+    debug=False
+)
+
+print("Bluetooth")
+ble_midi_service = adafruit_ble_midi.MIDIService()
+ble_advertisement = ProvideServicesAdvertisement(ble_midi_service)
+
+ble = adafruit_ble.BLERadio()
+if ble.connected:
+    for c in ble.connections:
+        c.disconnect()
+
+ble_midi = adafruit_midi.MIDI(
+    midi_in=ble_midi_service,
+    midi_out=ble_midi_service,
+    in_channel=0,
+    out_channel=0,
+    debug=False
+)
 
 print("\n:: Initializing Audio ::")
 
@@ -676,26 +703,39 @@ def control_change(control, value):
 def pitch_bend(value):
     voice.set_bend(value)
 
-while True:
-    msg = midi.receive()
-    if msg != None:
-        if midi_thru:
-            midi.send(msg)
-        if isinstance(msg, NoteOn):
-            #print("Note On:", msg.note, msg.velocity / 127.0)
-            if msg.velocity > 0.0:
-                note_on(msg.note, msg.velocity / 127.0)
-            else:
-                note_off(msg.note)
-        elif isinstance(msg, NoteOff):
-            #print("Note Off:", msg.note)
+ble.start_advertising(ble_advertisement)
+
+def process_midi_msg(msg):
+    if msg == None:
+        return
+
+    if isinstance(msg, NoteOn):
+        #print("Note On:", msg.note, msg.velocity / 127.0)
+        if msg.velocity > 0.0:
+            note_on(msg.note, msg.velocity / 127.0)
+        else:
             note_off(msg.note)
-        elif isinstance(msg, ControlChange):
-            #print("Control Change:", msg.control, msg.value / 127.0)
-            control_change(msg.control, msg.value / 127.0)
-        elif isinstance(msg, PitchBend):
-            #print("Pitch Bend:", (msg.pitch_bend - 8192) / 8192)
-            pitch_bend((msg.pitch_bend - 8192) / 8192);
+    elif isinstance(msg, NoteOff):
+        #print("Note Off:", msg.note)
+        note_off(msg.note)
+    elif isinstance(msg, ControlChange):
+        #print("Control Change:", msg.control, msg.value / 127.0)
+        control_change(msg.control, msg.value / 127.0)
+    elif isinstance(msg, PitchBend):
+        #print("Pitch Bend:", (msg.pitch_bend - 8192) / 8192)
+        pitch_bend((msg.pitch_bend - 8192) / 8192);
+
+    if midi_thru:
+        uart_midi.send(msg)
+        usb_midi.send(msg)
+        if ble.connected:
+            ble_midi.send(msg)
+
+while True:
+    process_midi_msg(uart_midi.receive())
+    process_midi_msg(usb_midi.receive())
+    if ble.connected:
+        process_midi_msg(ble_midi.receive())
 
 print("\n:: Process Ended ::")
 led.value = False
