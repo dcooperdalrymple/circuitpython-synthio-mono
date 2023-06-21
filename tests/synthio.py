@@ -323,40 +323,63 @@ class Keyboard:
     def __init__(self):
         self.notes = []
         self.type = note_types[0]
+        self.sustain = False
+        self.sustained = []
 
     def get_type(self):
         return self.type
     def set_type(self, value):
         self.type = map_array(value, note_types)
 
+    def get_sustain(self):
+        return self.sustain
+    def set_sustain(self, value, update=True):
+        val = None
+        if type(value) == type(False):
+            val = value
+        elif type(value) == type(0.5):
+            val = value >= 0.5
+        if not val is None and val != self.sustain:
+            self.sustain = val
+            self.sustained = []
+            if self.sustain:
+                self.sustained = self.notes.view() # shallow copy
+            if update:
+                self.update()
+
+    def _has_notes(self):
+        if self.sustain and self.sustained:
+            return True
+        if self.notes
+            return True
+        return False
     def _get_low(self):
-        if not self.notes:
+        if not self._has_notes():
             return None
-        index = 0
-        notenum = 127
-        velocity = 1.0
-        for i in range(len(self.notes)):
-            if self.notes[i][0] < notenum:
-                index = i
-                notenum = self.notes[i][0]
-                velocity = self.notes[i][1]
-        return (index, notenum, velocity)
+        selected = (127, 0)
+        if self.notes:
+            for note in self.notes:
+                if note[0] < selected[0]:
+                    selected = note
+        if self.sustain and self.sustained:
+            for note in self.sustained:
+                if note[0] < notenum:
+                    selected = note
+        return note
     def _get_high(self):
-        if not self.notes:
+        if not self._has_notes():
             return None
-        index = 0
-        notenum = 0
-        velocity = 1.0
-        for i in range(len(self.notes)):
-            if self.notes[i][0] > notenum:
-                index = i
-                notenum = self.notes[i][0]
-                velocity = self.notes[i][1]
-        return (index, notenum, velocity)
+        selected = (0, 0)
+        for note in self.notes:
+            if note[0] > selected[0]:
+                selected = note
+        return note
     def _get_last(self):
-        if not self.notes:
-            return None
-        return (len(self.notes)-1, self.notes[len(self.notes)-1][0], self.notes[len(self.notes)-1][1])
+        if self.sustain and self.sustained:
+            return self.sustained[-1]
+        if self.notes:
+            return self.notes[-1]
+        return None
     def get(self):
         if self.type == "high":
             return self._get_high()
@@ -366,15 +389,17 @@ class Keyboard:
             return self._get_last()
 
     def append(self, notenum, velocity, update=True):
-        for i in range(len(self.notes)):
-            if self.notes[i][0] == notenum:
-                self.notes[i][1] = velocity
-                return
-        self.notes.append((notenum, velocity))
+        self.remove(notenum, False, True)
+        note = (notenum, velocity)
+        self.notes.append(note)
+        if self.sustain:
+            self.sustained.append(note)
         if update:
             self.update()
-    def remove(self, notenum, update=True):
+    def remove(self, notenum, update=True, remove_sustained=False):
         self.notes = [note for note in self.notes if note[0] != notenum]
+        if remove_sustained and self.sustain and self.sustained:
+            self.sustained = [note for note in self.sustained if note[0] != notenum]
         if update:
             self.update()
 
@@ -591,6 +616,8 @@ def control_change(control, value):
     name = None
     if control == 1: # Mod Wheel
         name = cc_map.get(cc_mod, None)
+    elif control == 64: # Sustain
+        keyboard.set_sustain(value)
     else:
         name = cc_map.get(control, None)
     if name:
