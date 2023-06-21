@@ -7,6 +7,7 @@
     "keyboard_type",
     "velocity_amount",
     "bend_amount",
+    "mod_parameter",
     "filter_type",
     "filter_frequency",
     "filter_resonance",

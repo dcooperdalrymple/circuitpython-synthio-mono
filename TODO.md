@@ -11,3 +11,4 @@
 - Filter envelope
 - Envelope retrigger
 - Menu System
+- REAPER JSFX Controller Plugin

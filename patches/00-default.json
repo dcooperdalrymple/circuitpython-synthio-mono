@@ -5,6 +5,7 @@
         "volume": 1.0,
         "keyboard_type": "high",
         "velocity_amount": 1.0,
+        "mod_parameter": "filter_frequency",
         "filter_type": "lpf",
         "filter_frequency": 1.0,
         "filter_resonance": 0.0,
@@ -39,5 +40,5 @@
         "pan_rate_1": 0.0,
         "pan_depth_1": 0.0,
         "pan_1": 0.5
-    },
+    }
 }

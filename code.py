@@ -512,6 +512,37 @@ keyboard = Keyboard()
 
 print("\n:: Reading Configuration ::")
 
+def read_json(path):
+    try:
+        with open(path, "r") as file:
+            data = json.load(file)
+    except:
+        print("Failed to read JSON file: {}".format(path))
+        return None
+    print("Successfully read JSON file: {}".format(path))
+    return data
+def save_json(path, data):
+    if not data:
+        return False
+    try:
+        with open(path, "w") as file:
+            json.dump(data, file)
+    except:
+        print("Failed to write JSON file: {}".format(path))
+        return False
+    print("Successfully written JSON file: {}".format(path))
+    return True
+
+parameters = read_json("/parameters.json")
+midi_map = read_json("/midi.json")
+
+exclude_mod_parameters = [
+    "midi_channel",
+    "midi_thru"
+]
+mod_parameters = [name for name in parameters if not name in exclude_mod_parameters]
+mod_parameter = mod_parameters[0]
+
 def set_parameter(name, value, update=True):
     if not name in parameters:
         return
@@ -551,7 +582,8 @@ def set_parameter(name, value, update=True):
         for voice in param_voices:
             voice.set_bend_amount(value, update)
     elif name == "mod_parameter":
-        cc_mod = map_array(value, parameters)
+        global mod_parameter
+        mod_parameter = map_array(value, mod_parameters)
 
     # TODO: Global filter
     elif name == "filter_type":
@@ -656,10 +688,11 @@ def get_parameter(name, format=False, translate=True):
     elif name == "bend_amount":
         return param_voice.bend_amount
     elif name == "mod_parameter":
+        global mod_parameter
         if format or translate:
-            return cc_mod
+            return mod_parameter
         else:
-            return unmap_array(cc_mod, parameters)
+            return unmap_array(mod_parameter, mod_parameters)
 
     # TODO: Global filter
     elif name == "filter_type":
@@ -725,27 +758,6 @@ def get_parameter(name, format=False, translate=True):
 
     return None
 
-def read_json(path):
-    try:
-        with open(path, "r") as file:
-            data = json.load(file)
-    except:
-        print("Failed to read JSON file: {}".format(path))
-        return None
-    print("Successfully read JSON file: {}".format(path))
-    return data
-def save_json(path, data):
-    if not data:
-        return False
-    try:
-        with open(path, "w") as file:
-            json.dump(data, file)
-    except:
-        print("Failed to write JSON file: {}".format(path))
-        return False
-    print("Successfully written JSON file: {}".format(path))
-    return True
-
 def slugify(value):
     value = re.sub(r'[^\w\s-]', '', value.lower())
     return re.sub(r'[-\s]+', '-', value).strip('-_')
@@ -758,7 +770,7 @@ def get_patch_index(filename):
 def list_patches():
     return [filename for filename in os.listdir("/patches") if valid_patch_filename(filename)]
 
-exclude_parameters = [
+exclude_patch_parameters = [
     "midi_channel",
     "midi_thru",
     "portamento",
@@ -819,7 +831,7 @@ def save_patch(index=0, name="Patch"):
         "parameters": {},
     }
     for name in parameters:
-        if not name in exclude_parameters:
+        if not name in exclude_patch_parameters:
             value = get_parameter(name, False, True)
             if value:
                 data["parameters"][name] = value
@@ -830,9 +842,6 @@ def save_patch(index=0, name="Patch"):
 def read_first_patch():
     return read_patch(0)
 
-parameters = read_json("/parameters.json")
-cc_map = read_json("/midi.json")
-cc_mod = list(parameters)[0]
 read_first_patch()
 
 print("\n:: Initialization Complete ::")
@@ -845,11 +854,12 @@ def note_off(notenum):
 def control_change(control, value):
     name = None
     if control == 1: # Mod Wheel
-        name = cc_map.get(cc_mod, None)
+        global mod_parameter
+        name = mod_parameter
     elif control == 64: # Sustain
         keyboard.set_sustain(value)
     else:
-        name = cc_map.get(control, None)
+        name = midi_map.get(str(control), None)
     if name:
         set_parameter(name, value)
 
