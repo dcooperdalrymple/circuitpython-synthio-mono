@@ -164,6 +164,9 @@ filter_types = ["lpf", "hpf", "bpf"]
 
 def map_value(value, min_value, max_value):
     return min(max((value * (max_value - min_value)) + min_value, min_value), max_value)
+def unmap_value(value, min_value, max_value):
+    return (min(max(value, min_value), max_value) - min_value) / (max_value - min_value)
+
 def map_value_centered(value, min_value, center_value, max_value, threshold=MAP_THRESHOLD):
     if value > 0.5 + threshold:
         if threshold > 0.0:
@@ -175,16 +178,51 @@ def map_value_centered(value, min_value, center_value, max_value, threshold=MAP_
         return map_value(value, min_value, center_value)
     else:
         return center_value
+def unmap_value_centered(value, min_value, center_value, max_value, threshold=MAP_THRESHOLD):
+    if value > center_value:
+        value = unmap_value(value, center_value, max_value)
+        if threshold > 0.0:
+            return value/(1/(0.5-threshold))+(0.5+threshold)
+        else:
+            return value/2+0.5
+    elif value < center_value:
+        value = unmap_value(value, min_value, center_value)
+        if threshold > 0.0:
+            return value/(1/(0.5-threshold))
+        else:
+            return value/2
+    else:
+        return 0.5
+
 def map_boolean(value):
     if type(value) == type(False):
         return value
     else:
         return value >= 0.5
+def unmap_boolean(value):
+    if value:
+        return 1.0
+    else:
+        return 0.0
+
 def map_array(value, arr):
     index = math.floor(max(min(value * len(arr), len(arr) - 1), 0))
     return arr[index]
+def unmap_array(value, arr):
+    if not value in arr:
+        return 0.0
+    try:
+        return arr.index(value) / len(arr)
+    except:
+        return 0.0
+
 def map_dict(value, dict):
-    return map_array(value, list(dict))
+    if type(value) == type(""):
+        return dict.get(value, None)
+    else:
+        return map_array(value, list(dict))
+def unmap_dict(value, dict):
+    return unmap_array(value, list(dict))
 
 class Voice:
     def __init__(self):
