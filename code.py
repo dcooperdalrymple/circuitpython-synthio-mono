@@ -212,6 +212,10 @@ def unmap_boolean(value):
         return 0.0
 
 def map_array(value, arr):
+    if type(value) == type(""):
+        if not value in arr:
+            return arr[0]
+        return value
     index = math.floor(max(min(value * len(arr), len(arr) - 1), 0))
     return arr[index]
 def unmap_array(value, arr):
@@ -223,10 +227,7 @@ def unmap_array(value, arr):
         return 0.0
 
 def map_dict(value, dict):
-    if type(value) == type(""):
-        return dict.get(value, None)
-    else:
-        return map_array(value, list(dict))
+    return map_array(value, list(dict))
 def unmap_dict(value, dict):
     return unmap_array(value, list(dict))
 
@@ -433,7 +434,7 @@ class Keyboard:
     def _has_notes(self):
         if self.sustain and self.sustained:
             return True
-        if self.notes
+        if self.notes:
             return True
         return False
     def _get_low(self):
@@ -531,8 +532,8 @@ def set_parameter(name, value, update=True):
 
     if name == "midi_channel":
         value = map_value(value, MIDI_CHANNEL_MIN, MIDI_CHANNEL_MAX)
-        midi.in_channel = value
-        midi.out_channel = value
+        midi.in_channel = value-1
+        midi.out_channel = value-1
     elif name == "midi_thru":
         midi_thru = map_boolean(value)
 
@@ -671,7 +672,8 @@ def control_change(control, value):
         set_parameter(name, value)
 
 def pitch_bend(value):
-    voice.set_bend(value)
+    for voice in voices:
+        voice.set_bend(value)
 
 if ble and ble_advertisement:
     ble.start_advertising(ble_advertisement)
@@ -694,7 +696,7 @@ def process_midi_msg(msg):
         control_change(msg.control, msg.value / 127.0)
     elif isinstance(msg, PitchBend):
         #print("Pitch Bend:", (msg.pitch_bend - 8192) / 8192)
-        pitch_bend((msg.pitch_bend - 8192) / 8192);
+        pitch_bend((msg.pitch_bend - 8192) / 8192)
 
     if midi_thru:
         uart_midi.send(msg)
