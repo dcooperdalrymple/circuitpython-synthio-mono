@@ -448,108 +448,18 @@ class Keyboard:
 
 keyboard = Keyboard()
 
+print("\n:: Reading Configuration ::")
+
+parameters = read_json("/parameters.json")
+cc_map = read_json("/midi.json")
+cc_mod = list(parameters)[0]
+
 print("\n:: Initialization Complete ::")
 
 def note_on(notenum, velocity):
     keyboard.append(notenum, velocity)
 def note_off(notenum):
     keyboard.remove(notenum)
-
-parameters = [
-    "midi_channel",
-    "midi_thru",
-
-    "volume",
-    "portamento",
-    "keyboard_type",
-    "velocity_amount",
-    "bend_amount",
-    "filter_type",
-    "filter_frequency",
-    "filter_resonance",
-    "pan",
-    "attack_time",
-    "decay_time",
-    "release_time",
-    "attack_level",
-    "sustain_level",
-
-    "portamento_0",
-    "bend_amount_0",
-    "waveform_0",
-    "level_0",
-    "coarse_tune_0",
-    "fine_tune_0",
-    "tremolo_rate_0",
-    "tremolo_depth_0",
-    "vibrato_rate_0",
-    "vibrato_depth_0",
-    "pan_rate_0",
-    "pan_depth_0",
-    "pan_0",
-
-    "portamento_1",
-    "bend_amount_1",
-    "waveform_1",
-    "level_1",
-    "coarse_tune_1",
-    "fine_tune_1",
-    "tremolo_rate_1",
-    "tremolo_depth_1",
-    "vibrato_rate_1",
-    "vibrato_depth_1",
-    "pan_rate_1",
-    "pan_depth_1",
-    "pan_1",
-]
-
-cc_map = {
-    7: "volume",
-    5: "portamento",
-    9: "keyboard_type",
-    11: "velocity_amount",
-    14: "bend_amount",
-    15: "filter_type",
-    12: "filter_frequency",
-    13: "filter_resonance",
-    10: "pan",
-    16: "attack_time",
-    17: "decay_time",
-    18: "release_time",
-    19: "attack_level",
-    20: "sustain_level",
-
-    21: "portamento_0",
-    22: "bend_amount_0",
-    23: "waveform_0",
-    24: "level_0",
-    25: "coarse_tune_0",
-    26: "fine_tune_0",
-    27: "tremolo_rate_0",
-    28: "tremolo_depth_0",
-    29: "vibrato_rate_0",
-    30: "vibrato_depth_0",
-    31: "pan_rate_0",
-    70: "pan_depth_0",
-    71: "pan_0",
-
-    72: "portamento_1",
-    73: "bend_amount_1",
-    74: "waveform_1",
-    75: "level_1",
-    76: "coarse_tune_1",
-    77: "fine_tune_1",
-    78: "tremolo_rate_1",
-    79: "tremolo_depth_1",
-    80: "vibrato_rate_1",
-    81: "vibrato_depth_1",
-    82: "pan_rate_1",
-    83: "pan_depth_1",
-    84: "pan_1",
-
-    85: "mod_parameter",
-}
-cc_mod = list(parameters)[0]
 
 def set_parameter(name, value, update=True):
     if not name in parameters:
@@ -656,6 +566,12 @@ def set_parameter(name, value, update=True):
         for voice in param_voices:
             voice.set_envelope_sustain_level(value, update)
 
+def get_parameter(name, format=True):
+    if not name in parameters:
+        return
+    # TODO
+    return
+
 def read_json(path):
     try:
         with open(path, "r") as file:
@@ -688,6 +604,11 @@ def read_patch(path):
         voice.update_envelope()
         voice.update_bend()
     keyboard.update()
+
+def save_patch(path):
+    # TODO
+    data = { }
+    save_json(path, data)
 
 def control_change(control, value):
     name = None
