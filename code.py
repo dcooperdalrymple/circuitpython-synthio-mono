@@ -519,7 +519,7 @@ def set_parameter(name, value, update=True):
 
     param_voices = None
     if index:
-        param_voices = [voice[index]]
+        param_voices = [voices[index]]
     else:
         param_voices = voices
 
