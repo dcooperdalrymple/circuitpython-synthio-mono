@@ -41,6 +41,12 @@ BUFFER_SIZE         = 4096
 WAVE_SAMPLES        = 256
 WAVE_AMPLITUDE      = 12000 # out of 16384
 
+COARSE_TUNE_MAX     = 2.0
+COARSE_TUNE_MIN     = 0.5
+
+FINE_TUNE_MAX       = 1.0+1.0/12.0
+FINE_TUNE_MIN       = 1.0-1.0/12.0/2
+
 FILTER_FREQ_MAX     = min(SAMPLE_RATE*0.45, 20000)
 FILTER_FREQ_MIN     = 60
 FILTER_RES_MAX      = 16.0
@@ -125,6 +131,14 @@ filter_types = ["lpf", "hpf", "bpf"]
 
 def map_value(value, min_value, max_value):
     return min(max((value * (max_value - min_value)) + min_value, min_value), max_value)
+def map_value_centered(value, min_value, center_value, max_value):
+    # TODO: Implement center threshold?
+    if value > 0.5:
+        return map_value((value - 0.5) * 2, center_value, max_value)
+    elif value < 0.5:
+        return map_value(value * 2, min_value, center_value)
+    else:
+        return center_value
 def map_array(value, arr):
     index = math.floor(max(min(value * len(arr), len(arr) - 1), 0))
     return arr[index]
@@ -138,6 +152,8 @@ class Voice:
 
         self.waveform = "saw"
         self._waveform = self.waveform
+        self.coarse_tune = 0.5
+        self.fine_tune = 0.5
 
         self.velocity_amount = 1.0
         self.attack_time = 0.0
@@ -186,12 +202,28 @@ class Voice:
         self.velocity = velocity
         self.update_envelope()
         if notenum != self.notenum:
-            self.notenum = notenum
-            self.note.frequency = synthio.midi_to_hz(notenum)
+            self.set_frequency(notenum)
             synth.press(self.note)
     def release(self):
         synth.release(self.note)
         self.notenum = 0
+
+    def get_frequency(self, notenum=None):
+        if not notenum:
+            notenum = self.notenum
+        return synthio.midi_to_hz(notenum) * map_value_centered(self.coarse_tune, COARSE_TUNE_MIN, 1.0, COARSE_TUNE_MAX) * map_value_centered(self.fine_tune, FINE_TUNE_MIN, 1.0, FINE_TUNE_MAX)
+    def set_frequency(self, notenum=None):
+        if notenum:
+            self.notenum = notenum
+        self.note.frequency = self.get_frequency()
+    def set_coarse_tune(self, value, update=True):
+        self.coarse_tune = value
+        if update:
+            self.set_frequency()
+    def set_fine_tune(self, value, update=True):
+        self.fine_tune = value
+        if update:
+            self.set_frequency()
 
     def get_velocity_mod(self):
         return 1.0 - (1.0 - self.velocity) * self.velocity_amount
