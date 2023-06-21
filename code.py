@@ -362,9 +362,9 @@ class Voice:
 
     def build_envelope(self):
         return synthio.Envelope(
-            attack_time=map_value(self.attack_time, ENVELOPE_TIME_MIN, ENVELOPE_TIME_MAX),
-            decay_time=map_value(self.decay_time, ENVELOPE_TIME_MIN, ENVELOPE_TIME_MAX),
-            release_time=map_value(self.release_time, ENVELOPE_TIME_MIN, ENVELOPE_TIME_MAX),
+            attack_time=self.get_envelope_attack_time(True),
+            decay_time=self.get_envelope_decay_time(True),
+            release_time=self.get_envelope_release_time(True),
             attack_level=self.get_velocity_mod() * self.attack_level,
             sustain_level=self.get_velocity_mod() * self.sustain_level
         )
@@ -374,14 +374,29 @@ class Voice:
         self.attack_time = value
         if update:
             self.update_envelope()
+    def get_envelope_attack_time(self, format=True):
+        if format:
+            return map_value(self.attack_time, ENVELOPE_TIME_MIN, ENVELOPE_TIME_MAX)
+        else:
+            return self.attack_time
     def set_envelope_decay_time(self, value, update=True):
         self.decay_time = value
         if update:
             self.update_envelope()
+    def get_envelope_decay_time(self, format=True):
+        if format:
+            return map_value(self.decay_time, ENVELOPE_TIME_MIN, ENVELOPE_TIME_MAX)
+        else:
+            return self.decay_time
     def set_envelope_release_time(self, value, update=True):
         self.release_time = value
         if update:
             self.update_envelope()
+    def get_envelope_release_time(self, format=True):
+        if format:
+            return map_value(self.release_time, ENVELOPE_TIME_MIN, ENVELOPE_TIME_MAX)
+        else:
+            return self.release_time
     def set_envelope_attack_level(self, value, update=True):
         self.attack_level = value
         if update:
@@ -413,11 +428,6 @@ class Keyboard:
         self.type = note_types[0]
         self.sustain = False
         self.sustained = []
-
-    def get_type(self):
-        return self.type
-    def set_type(self, value):
-        self.type = map_array(value, note_types)
 
     def get_sustain(self):
         return self.sustain
@@ -542,7 +552,7 @@ def set_parameter(name, value, update=True):
     elif name == "portamento":
         pass
     elif name == "keyboard_type":
-        keyboard.set_type(value)
+        keyboard.type = map_array(value, note_types)
     elif name == "velocity_amount":
         for voice in param_voices:
             voice.velocity_amount = value
@@ -616,18 +626,120 @@ def set_parameter(name, value, update=True):
         for voice in param_voices:
             voice.set_envelope_sustain_level(value, update)
 
-def get_parameter(name, format=True):
+def get_parameter(name, format=False, translate=True):
     if not name in parameters:
-        return
-    # TODO
-    return
+        return None
+
+    index = name[-1]
+    if index.isdigit():
+        index = int(index)
+        name = name[:len(name)-2]
+        if index >= len(voices):
+            return None
+    else:
+        index = 0
+    param_voice = voices[index]
+
+    if name == "midi_channel":
+        if format:
+            return midi.in_channel+1
+        else:
+            return unmap_value(midi.in_channel+1, MIDI_CHANNEL_MIN, MIDI_CHANNEL_MAX)
+    elif name == "midi_thru":
+        if format:
+            return midi_thru
+        else:
+            return unmap_boolean(midi_thru)
+
+    elif name == "volume":
+        return value
+    elif name == "portamento":
+        return None # NOTE: Not implemented
+    elif name == "keyboard_type":
+        if format or translate:
+            return keyboard.type
+        else:
+            return unmap_array(keyboard.type, note_types)
+    elif name == "velocity_amount":
+        return param_voice.velocity_amount
+    elif name == "bend_amount":
+        return param_voice.bend_amount
+    elif name == "mod_parameter":
+        if format or translate:
+            return cc_mod
+        else:
+            return unmap_array(cc_mod, parameters)
+
+    # TODO: Global filter
+    elif name == "filter_type":
+        if format or translate:
+            return param_voice.filter_type
+        else:
+            return unmap_array(param_voice.filter_type, filter_types)
+    elif name == "filter_frequency":
+        if format:
+            return param_voice.get_filter_frequency()
+        else:
+            return param_voice.filter_frequency
+    elif name == "filter_resonance":
+        if format:
+            return param_voice.get_filter_resonance()
+        else:
+            return param_voice.filter_resonance
+
+    elif name == "waveform":
+        if format or translate:
+            return param_voice.waveform
+        else:
+            return unmap_dict(param_voice.waveform, waveforms)
+    elif name == "level":
+        return param_voice.note.amplitude.offset
+    elif name == "coarse_tune":
+        # TODO: Formatting?
+        return param_voice.coarse_tune
+    elif name == "fine_tune":
+        # TODO: Formatting?
+        return param_voice.fine_tune
+
+    elif name == "tremolo_rate":
+        return param_voice.note.amplitude.rate
+    elif name == "tremolo_depth":
+        return param_voice.note.amplitude.scale
+
+    elif name == "vibrato_rate":
+        return param_voice.note.bend.rate
+    elif name == "vibrato_depth":
+        return param_voice.note.bend.scale
+
+    elif name == "pan_rate":
+        return param_voice.note.panning.rate
+    elif name == "pan_depth":
+        return param_voice.note.panning.scale
+    elif name == "pan":
+        if format:
+            return voice.note.panning.offset
+        else:
+            return unmap_value(voice.note.panning.offset, -1.0, 1.0)
+
+    elif name == "attack_time":
+        return param_voice.get_envelope_attack_time(format)
+    elif name == "decay_time":
+        return param_voice.get_envelope_decay_time(format)
+    elif name == "release_time":
+        return param_voice.get_envelope_release_time(format)
+    elif name == "attack_level":
+        return param_voice.attack_level
+    elif name == "sustain_level":
+        return param_voice.sustain_level
+
+    return None
 
 def read_json(path):
     try:
         with open(path, "r") as file:
             data = json.load(file)
     except:
-        print("Failed to read JSON file:", path)
+        print("Failed to read JSON file: {}".format(path))
         return None
     return data
 
