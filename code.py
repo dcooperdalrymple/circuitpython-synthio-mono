@@ -15,8 +15,8 @@ import storage
 from busio import UART
 import usb_midi
 import adafruit_ble
-from adafruit_ble.advertising.standard import ProvideServicersAdvertisement
-import adafruit_ble.midi
+from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
+import adafruit_ble_midi
 import adafruit_midi
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.note_off import NoteOff
@@ -108,21 +108,27 @@ usb_midi = adafruit_midi.MIDI(
 )
 
 print("Bluetooth")
-ble_midi_service = adafruit_ble_midi.MIDIService()
-ble_advertisement = ProvideServicesAdvertisement(ble_midi_service)
+try:
+    ble_midi_service = adafruit_ble_midi.MIDIService()
+    ble_advertisement = ProvideServicesAdvertisement(ble_midi_service)
 
-ble = adafruit_ble.BLERadio()
-if ble.connected:
-    for c in ble.connections:
-        c.disconnect()
+    ble = adafruit_ble.BLERadio()
+    if ble.connected:
+        for c in ble.connections:
+            c.disconnect()
 
-ble_midi = adafruit_midi.MIDI(
-    midi_in=ble_midi_service,
-    midi_out=ble_midi_service,
-    in_channel=0,
-    out_channel=0,
-    debug=False
-)
+    ble_midi = adafruit_midi.MIDI(
+        midi_in=ble_midi_service,
+        midi_out=ble_midi_service,
+        in_channel=0,
+        out_channel=0,
+        debug=False
+    )
+except:
+    ble = None
+    ble_advertisement = None
+    ble_midi = None
+    print("Device not bluetooth capable")
 
 print("\n:: Initializing Audio ::")
 
@@ -667,7 +673,8 @@ def control_change(control, value):
 def pitch_bend(value):
     voice.set_bend(value)
 
-ble.start_advertising(ble_advertisement)
+if ble and ble_advertisement:
+    ble.start_advertising(ble_advertisement)
 
 def process_midi_msg(msg):
     if msg == None:
@@ -692,13 +699,13 @@ def process_midi_msg(msg):
     if midi_thru:
         uart_midi.send(msg)
         usb_midi.send(msg)
-        if ble.connected:
+        if ble and ble.connected and ble_midi:
             ble_midi.send(msg)
 
 while True:
     process_midi_msg(uart_midi.receive())
     process_midi_msg(usb_midi.receive())
-    if ble.connected:
+    if ble and ble.connected and ble_midi:
         process_midi_msg(ble_midi.receive())
 
 print("\n:: Process Ended ::")
