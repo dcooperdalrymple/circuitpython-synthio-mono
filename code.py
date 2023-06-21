@@ -33,6 +33,8 @@ import ulab.numpy as numpy
 
 # Program Constants
 
+MAP_THRESHOLD       = 0.0
+
 MIDI_CHANNEL_MAX    = 16
 MIDI_CHANNEL_MIN    = 1
 MIDI_TX             = board.GP4
@@ -162,12 +164,15 @@ filter_types = ["lpf", "hpf", "bpf"]
 
 def map_value(value, min_value, max_value):
     return min(max((value * (max_value - min_value)) + min_value, min_value), max_value)
-def map_value_centered(value, min_value, center_value, max_value):
-    # TODO: Implement center threshold?
-    if value > 0.5:
-        return map_value((value - 0.5) * 2, center_value, max_value)
-    elif value < 0.5:
-        return map_value(value * 2, min_value, center_value)
+def map_value_centered(value, min_value, center_value, max_value, threshold=MAP_THRESHOLD):
+    if value > 0.5 + threshold:
+        if threshold > 0.0:
+            value = (value-(0.5+threshold))*(1/(0.5-threshold))
+        return map_value(value, center_value, max_value)
+    elif value < 0.5 - threshold:
+        if threshold > 0.0:
+            value = value*(1/(0.5-threshold))
+        return map_value(value, min_value, center_value)
     else:
         return center_value
 def map_boolean(value):
