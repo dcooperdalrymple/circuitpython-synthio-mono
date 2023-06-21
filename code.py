@@ -9,6 +9,8 @@ import board
 
 from digitalio import DigitalInOut, Direction, Pull
 
+import os
+import re
 import json
 import storage
 
@@ -510,17 +512,6 @@ keyboard = Keyboard()
 
 print("\n:: Reading Configuration ::")
 
-parameters = read_json("/parameters.json")
-cc_map = read_json("/midi.json")
-cc_mod = list(parameters)[0]
-
-print("\n:: Initialization Complete ::")
-
-def note_on(notenum, velocity):
-    keyboard.append(notenum, velocity)
-def note_off(notenum):
-    keyboard.remove(notenum)
-
 def set_parameter(name, value, update=True):
     if not name in parameters:
         return
@@ -741,8 +732,8 @@ def read_json(path):
     except:
         print("Failed to read JSON file: {}".format(path))
         return None
+    print("Successfully read JSON file: {}".format(path))
     return data
-
 def save_json(path, data):
     if not data:
         return False
@@ -750,27 +741,106 @@ def save_json(path, data):
         with open(path, "w") as file:
             json.dump(data, file)
     except:
-        print("Failed to write JSON file:", path)
+        print("Failed to write JSON file: {}".format(path))
         return False
+    print("Successfully written JSON file: {}".format(path))
     return True
 
-def read_patch(path):
-    data = read_json(path)
-    if not data:
+def slugify(value):
+    value = re.sub(r'[^\w\s-]', '', value.lower())
+    return re.sub(r'[-\s]+', '-', value).strip('-_')
+def valid_patch_filename(filename):
+    return len(filename) > len("00-a.json") and filename[-5:] == ".json" and filename[0:2].isdigit() and filename[2] == "-"
+def get_patch_index(filename):
+    if not valid_patch_filename(filename):
+        return 0
+    return int(filename[0:2])
+def list_patches():
+    return [filename for filename in os.listdir("/patches") if valid_patch_filename(filename)]
+
+exclude_parameters = [
+    "midi_channel",
+    "midi_thru",
+    "portamento",
+    "bend_amount",
+    "pan"
+]
+def get_patch_filename(index):
+    if type(index) == type("") and index.isdigit():
+        index = int(index)
+    if type(index) != type(1):
+        return None
+    if index > 99:
+        return None
+    patches = list_patches()
+    if not patches:
+        return None
+    for filename in patches:
+        if get_patch_index(filename) == index:
+            return filename
+    return None
+def get_patch_path(index):
+    filename = get_patch_filename(index)
+    if not filename:
+        return None
+    return "/patches/{}".format(filename)
+def remove_patch(index):
+    path = get_patch_path(index)
+    if not path:
         return False
-    for name in data:
-        set_parameter(name, data[name], False)
+    try:
+        os.remove(path)
+        return True
+    except:
+        return False
+def read_patch(index):
+    path = get_patch_path(index)
+    if not path:
+        return False
+    print("Reading Patch #{:d}: {}".format(index, path))
+    data = read_json(path)
+    if not data or not "parameters" in data:
+        print("Invalid Data")
+        return False
+    for name in data["parameters"]:
+        set_parameter(name, data["parameters"][name], False)
     for voice in voices:
         voice.update_waveform()
         voice.update_filter()
         voice.update_envelope()
         voice.update_bend()
     keyboard.update()
+    print("Successfully Imported Patch")
+    return True
+def save_patch(index=0, name="Patch"):
+    data = {
+        "index": 0,
+        "name": name,
+        "parameters": {},
+    }
+    for name in parameters:
+        if not name in exclude_parameters:
+            value = get_parameter(name, False, True)
+            if value:
+                data["parameters"][name] = value
+    remove_patch(index)
+    path = "/patches/{:02d}-{}.json".format(index, slugify(name))
+    print("Saving Patch #{:d} ({}) at {}".format(index, name, path))
+    return save_json(path, data)
+def read_first_patch():
+    return read_patch(0)
 
-def save_patch(path):
-    # TODO
-    data = { }
-    save_json(path, data)
+parameters = read_json("/parameters.json")
+cc_map = read_json("/midi.json")
+cc_mod = list(parameters)[0]
+read_first_patch()
+
+print("\n:: Initialization Complete ::")
+
+def note_on(notenum, velocity):
+    keyboard.append(notenum, velocity)
+def note_off(notenum):
+    keyboard.remove(notenum)
 
 def control_change(control, value):
     name = None
@@ -809,6 +879,8 @@ def process_midi_msg(msg):
     elif isinstance(msg, PitchBend):
         #print("Pitch Bend:", (msg.pitch_bend - 8192) / 8192)
         pitch_bend((msg.pitch_bend - 8192) / 8192)
+    elif isinstance(msg, ProgramChange):
+        read_patch(msg.patch)
 
     if midi_thru:
         uart_midi.send(msg)
