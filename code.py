@@ -243,7 +243,7 @@ uart_midi = adafruit_midi.MIDI(
 )
 
 print("USB")
-usb_midi = adafruit_midi.MIDI(
+usb_midi_driver = adafruit_midi.MIDI(
     midi_in=usb_midi.ports[0],
     midi_out=usb_midi.ports[1],
     in_channel=0,
@@ -707,8 +707,13 @@ def set_parameter(name, value, update=True):
 
     if name == "midi_channel":
         value = map_value(value, MIDI_CHANNEL_MIN, MIDI_CHANNEL_MAX)
-        midi.in_channel = value-1
-        midi.out_channel = value-1
+        uart_midi.in_channel = value-1
+        uart_midi.out_channel = value-1
+        usb_midi_driver.in_channel = value-1
+        usb_midi_driver.out_channel = value-1
+        if ble and ble_midi:
+            ble_midi.in_channel = value-1
+            ble_midi.out_channel = value-1
     elif name == "midi_thru":
         midi_thru = map_boolean(value)
 
@@ -808,9 +813,9 @@ def get_parameter(name, format=False, translate=True):
 
     if name == "midi_channel":
         if format:
-            return midi.in_channel+1
+            return uart_midi.in_channel+1
         else:
-            return unmap_value(midi.in_channel+1, MIDI_CHANNEL_MIN, MIDI_CHANNEL_MAX)
+            return unmap_value(uart_midi.in_channel+1, MIDI_CHANNEL_MIN, MIDI_CHANNEL_MAX)
     elif name == "midi_thru":
         if format:
             return midi_thru
@@ -1055,13 +1060,13 @@ def process_midi_msg(msg):
 
     if midi_thru:
         uart_midi.send(msg)
-        usb_midi.send(msg)
+        usb_midi_driver.send(msg)
         if ble and ble.connected and ble_midi:
             ble_midi.send(msg)
 
 def process_midi_msgs(midi, limit=32):
     while limit>0:
-        msg = uart_midi.receive()
+        msg = midi.receive()
         if not msg:
             break
         process_midi_msg(msg)
@@ -1076,7 +1081,7 @@ while True:
     if now >= last_midi_now + MIDI_UPDATE:
         last_midi_now = now
         process_midi_msgs(uart_midi)
-        process_midi_msgs(usb_midi)
+        process_midi_msgs(usb_midi_driver)
         if ble and ble.connected and ble_midi:
             process_midi_msgs(ble_midi)
 
