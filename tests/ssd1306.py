@@ -1,4 +1,4 @@
-# rpi-pico-synthio: SSD1306 Test
+# circuitpython-synthio-mono: SSD1306 Test
 # 2023 Cooper Dalrymple - me@dcdalrymple.com
 # GPL v3 License
 # Version 1.0
@@ -29,10 +29,10 @@ led.value = True
 time.sleep(0.5)
 
 # Serial Header
-print("rpi-pico-synthio: SSD1306 Display Test")
+print("circuitpython-synthio-mono: SSD1306 Display Test")
 print("Version 1.0")
 print("Cooper Dalrymple, 2023")
-print("https://dcdalrymple.com/rpi-pico-synthio/")
+print("https://dcdalrymple.com/circuitpython-synthio-mono/")
 
 # Initialize Controls (I2C, NeoTrellis, Display, & Rotary)
 print("\n:: Resetting Display and Initializing ::")

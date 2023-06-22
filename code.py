@@ -1,4 +1,4 @@
-# rpi-pico-synthio
+# circuitpython-synthio-mono
 # 2023 Cooper Dalrymple - me@dcdalrymple.com
 # GPL v3 License
 # Version 1.0
@@ -102,10 +102,10 @@ led.value = True
 time.sleep(0.5)
 
 # Serial Header
-print("rpi-pico-synthio")
+print("circuitpython-synthio-mono")
 print("Version 1.0")
 print("Cooper Dalrymple, 2023")
-print("https://dcdalrymple.com/rpi-pico-synthio/")
+print("https://dcdalrymple.com/circuitpython-synthio-mono/")
 
 print("\n:: Initializing Display ::")
 
@@ -200,7 +200,7 @@ class Display:
             self.title_label.background_color = 0x000000
 
 display = Display()
-display.set_title("rpi-pico-synthio v1.0")
+display.set_title("circuitpython-synthio-mono v1.0")
 display.set_value("Loading...")
 
 print("\n:: Initializing Encoder ::")
