@@ -139,23 +139,33 @@ class Display:
         )
         self.group.append(self.bg_sprite)
 
-        # TODO: Scrolling Labels
-
         self.title_label = label.Label(
             terminalio.FONT,
             text="",
             color=0xFFFFFF,
-            anchor_point=(0.5, 0.5),
-            anchored_position=(DISPLAY_WIDTH//2,DISPLAY_HEIGHT//4)
+            background_color=None,
+            anchor_point=(0.0,0.5),
+            anchored_position=(0,DISPLAY_HEIGHT//4)
         )
         self.group.append(self.title_label)
+
+        self.group_label = label.Label(
+            terminalio.FONT,
+            text="",
+            color=0x000000,
+            background_color=0xFFFFFF,
+            anchor_point=(1.0,0.5),
+            anchored_position=(DISPLAY_WIDTH,DISPLAY_HEIGHT//4)
+        )
+        self.group.append(self.group_label)
 
         self.value_label = label.Label(
             terminalio.FONT,
             text="",
             color=0xFFFFFF,
-            anchor_point=(0.5, 0.5),
-            anchored_position=(DISPLAY_WIDTH//2,DISPLAY_HEIGHT//4*3)
+            background_color=None,
+            anchor_point=(0.0,0.5),
+            anchored_position=(0,DISPLAY_HEIGHT//4*3)
         )
         self.group.append(self.value_label)
 
@@ -164,17 +174,21 @@ class Display:
     def set_title(self, text):
         self.title_label.text = str(text)
 
+    def set_group(self, text):
+        self.group_label.text = str(text)
+
     def set_value(self, text):
         if type(text) == type(0.5):
             text = "{:.2f}".format(text)
         self.value_label.text = str(text)
 
-    def queue(self, title, value):
-        self.queued = (title, value)
+    def queue(self, title, group, value):
+        self.queued = (title, group, value)
     def update(self):
         if self.queued:
             self.set_title(self.queued[0])
-            self.set_value(self.queued[1])
+            self.set_group(self.queued[1])
+            self.set_value(self.queued[2])
             self.queued = None
 
 display = Display()
