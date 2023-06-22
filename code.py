@@ -889,9 +889,9 @@ def get_parameter(name, format=False, translate=True):
         return param_voice.note.panning.scale
     elif name == "pan":
         if format:
-            return voice.note.panning.offset
+            return param_voice.note.panning.offset
         else:
-            return unmap_value(voice.note.panning.offset, -1.0, 1.0)
+            return unmap_value(param_voice.note.panning.offset, -1.0, 1.0)
 
     elif name == "attack_time":
         return param_voice.get_envelope_attack_time(format)
