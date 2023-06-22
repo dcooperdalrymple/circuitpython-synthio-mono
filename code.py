@@ -191,6 +191,14 @@ class Display:
             self.set_value(self.queued[2])
             self.queued = None
 
+    def set_selected(self, value):
+        if value:
+            self.title_label.color = 0x000000
+            self.title_label.background_color = 0xFFFFFF
+        else:
+            self.title_label.color = 0xFFFFFF
+            self.title_label.background_color = 0x000000
+
 display = Display()
 display.set_title("rpi-pico-synthio v1.0")
 display.set_value("Loading...")
@@ -1018,6 +1026,7 @@ class Menu:
     def __init__(self):
         self._item = None
         self._groups = read_json("/menu.json")
+        self._selected = False
     def _get_item_by_index(self, group_index, parameter_index):
         if not self._groups or abs(group_index) >= len(self._groups):
             return False
@@ -1053,6 +1062,25 @@ class Menu:
             return False
         self._item = item
         return self._queue()
+    def _get_step_size(self, name):
+        if name[-1].isdigit():
+            name = name[:len(name)-2]
+        count = None # increments
+        if name == "midi_channel":
+            count = MIDI_CHANNEL_MAX-MIDI_CHANNEL_MIN
+        elif name == "midi_thru":
+            count = 1
+        elif name == "keyboard_type":
+            count = len(note_types)-1
+        elif name == "mod_parameter":
+            count = len(mod_parameters)-1
+        elif name == "filter_type":
+            count = len(filter_types)-1
+        elif name == "waveform":
+            count = len(waveforms)-1
+        if not count:
+            count = 20
+        return 1/count
     def display(self, name=None):
         if not name:
             return self._queue()
@@ -1085,13 +1113,44 @@ class Menu:
             return self._queue_by_index(self._item["group_index"]-1, -1)
         else:
             return self._queue_by_index(self._item["group_index"], self._item["parameter_index"]-1)
+    def increment(self):
+        if self._selected:
+            value = get_parameter(self._item["parameter_name"], False, False)
+            value = value + self._get_step_size(self._item["parameter_name"])
+            if set_parameter(self._item["parameter_name"], value):
+                return self._queue()
+            else:
+                return False
+        else:
+            return self.next()
+    def decrement(self):
+        if self._selected:
+            value = get_parameter(self._item["parameter_name"], False, False)
+            value = value - self._get_step_size(self._item["parameter_name"])
+            if set_parameter(self._item["parameter_name"], value):
+                return self._queue()
+            else:
+                return False
+        else:
+            return self.previous()
+    def toggle(self):
+        if self._selected:
+            self.deselect()
+        else:
+            self.select()
     def select(self):
-        pass
+        self._selected = True
+        display.set_selected(self._selected)
+    def deselect(self):
+        self._selected = False
+        display.set_selected(self._selected)
+    def selected(self):
+        return self._selected
 
 menu = Menu()
-encoder.set_increment(menu.next)
-encoder.set_decrement(menu.previous)
-encoder.set_release(menu.select)
+encoder.set_increment(menu.increment)
+encoder.set_decrement(menu.decrement)
+encoder.set_release(menu.toggle)
 
 print("\n:: Initialization Complete ::")
 display.set_value("Ready!")
