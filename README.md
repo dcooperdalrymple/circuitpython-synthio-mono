@@ -1,5 +1,5 @@
 # CircuitPython synthio Monophonic Synthesizer
-Demonstration of CircuitPython's synthio module using the RP2040, hardware MIDI input, I2S audio output, and a 4x4 neotrellis module.
+Demonstration of CircuitPython's synthio module using the RP2040, UART/USB/BLE MIDI input, and I2S audio output. Controlled with a MIDI interface or with a SSD1306-based 128x32 OLED and momentary switch rotary encoder.
 
 ## Features
 

@@ -20,7 +20,6 @@ DISPLAY_ADDRESS   = 0x3c
 DISPLAY_WIDTH     = 128
 DISPLAY_HEIGHT    = 64
 
-# Initialize status LED
 led = DigitalInOut(board.LED)
 led.direction = Direction.OUTPUT
 led.value = True
@@ -34,7 +33,6 @@ print("Version 1.0")
 print("Cooper Dalrymple, 2023")
 print("https://dcdalrymple.com/circuitpython-synthio-mono/")
 
-# Initialize Controls (I2C, NeoTrellis, Display, & Rotary)
 print("\n:: Resetting Display and Initializing ::")
 display_i2c = I2C(scl=board.GP21, sda=board.GP20)
 
@@ -42,7 +40,6 @@ displayio.release_displays()
 display_bus = displayio.I2CDisplay(display_i2c, device_address=DISPLAY_ADDRESS)
 display = adafruit_displayio_ssd1306.SSD1306(display_bus, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT)
 
-# Initialization Screen
 print("\n:: Drawing Screen ::")
 splash = displayio.Group()
 display.show(splash)
