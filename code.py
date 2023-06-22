@@ -701,16 +701,19 @@ mod_parameter = mod_parameters[0]
 
 def set_parameter(name, value, update=True):
     if not name in parameters:
-        return
+        return False
 
     index = name[-1]
     if index.isdigit():
         index = int(index)
         name = name[:len(name)-2]
         if index >= len(voices):
-            return
+            return False
     else:
         index = None
+
+    if type(value) == type(1.0):
+        value = max(min(value, 1.0), 0.0)
 
     param_voices = None
     if index:
@@ -719,7 +722,7 @@ def set_parameter(name, value, update=True):
         param_voices = voices
 
     if name == "midi_channel":
-        value = map_value(value, MIDI_CHANNEL_MIN, MIDI_CHANNEL_MAX)
+        value = round(map_value(value, MIDI_CHANNEL_MIN, MIDI_CHANNEL_MAX))
         uart_midi.in_channel = value-1
         uart_midi.out_channel = value-1
         usb_midi_driver.in_channel = value-1
@@ -728,6 +731,7 @@ def set_parameter(name, value, update=True):
             ble_midi.in_channel = value-1
             ble_midi.out_channel = value-1
     elif name == "midi_thru":
+        global midi_thru
         midi_thru = map_boolean(value)
 
     elif name == "volume":
@@ -810,6 +814,8 @@ def set_parameter(name, value, update=True):
         for voice in param_voices:
             voice.set_envelope_sustain_level(value, update)
 
+    return True
+
 def get_parameter(name, format=False, translate=True):
     if not name in parameters:
         return None
@@ -830,6 +836,7 @@ def get_parameter(name, format=False, translate=True):
         else:
             return unmap_value(uart_midi.in_channel+1, MIDI_CHANNEL_MIN, MIDI_CHANNEL_MAX)
     elif name == "midi_thru":
+        global midi_thru
         if format:
             return midi_thru
         else:
@@ -1137,6 +1144,7 @@ def process_midi_msg(msg):
     elif isinstance(msg, ProgramChange):
         read_patch(msg.patch)
 
+    global midi_thru
     if midi_thru:
         uart_midi.send(msg)
         usb_midi_driver.send(msg)
