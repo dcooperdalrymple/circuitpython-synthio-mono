@@ -1,53 +1,190 @@
-{
-    "Global": {
-        "midi_channel": "MIDI Channel",
-        "midi_thru": "MIDI Thru",
-
-        "volume": "Volume",
-        "portamento": "Glide",
-        "keyboard_type": "Note Type",
-        "velocity_amount": "Velocity Amount",
-        "bend_amount": "Bend Amount"
+[
+    {
+        "name": "Global",
+        "parameters": [
+            {
+                "name": "midi_channel",
+                "label": "MIDI Channel"
+            },
+            {
+                "name": "midi_thru",
+                "label": "MIDI Thru"
+            },
+            {
+                "name": "volume",
+                "label": "Volume"
+            },
+            {
+                "name": "portamento",
+                "label": "Glide"
+            },
+            {
+                "name": "keyboard_type",
+                "label": "Note Type"
+            },
+            {
+                "name": "velocity_amount",
+                "label": "Velocity Amount"
+            },
+            {
+                "name": "bend_amount",
+                "label": "Bend Amount"
+            }
+        ]
     },
-    "Voice": {
-        "filter_type": "Filter",
-        "filter_frequency": "Frequency",
-        "filter_resonance": "Resonance",
-        "pan": "Pan",
-        "attack_time": "Attack Time",
-        "decay_time": "Decay Time",
-        "release_time": "Release Time",
-        "attack_level": "Attack Level",
-        "sustain_level": "Sustain Level"
+    {
+        "name": "Voice",
+        "parameters": [
+            {
+                "name": "filter_type",
+                "label": "Filter"
+            },
+            {
+                "name": "filter_frequency",
+                "label": "Frequency"
+            },
+            {
+                "name": "filter_resonance",
+                "label": "Resonance"
+            },
+            {
+                "name": "pan",
+                "label": "Pan"
+            },
+            {
+                "name": "attack_time",
+                "label": "Attack Time"
+            },
+            {
+                "name": "decay_time",
+                "label": "Decay Time"
+            },
+            {
+                "name": "release_time",
+                "label": "Release Time"
+            },
+            {
+                "name": "attack_level",
+                "label": "Attack Level"
+            },
+            {
+                "name": "sustain_level",
+                "label": "Sustain Level"
+            }
+        ]
     },
-    "Oscillator 1": {
-        "portamento_0": "Glide",
-        "bend_amount_0": "Bend Amount",
-        "waveform_0": "Waveform",
-        "level_0": "Level",
-        "coarse_tune_0": "Coarse Tune",
-        "fine_tune_0": "Fine Tune",
-        "tremolo_rate_0": "Tremolo Rate",
-        "tremolo_depth_0": "Tremolo Depth",
-        "vibrato_rate_0": "Vibrato Rate",
-        "vibrato_depth_0": "Vibrato Depth",
-        "pan_0": "Pan",
-        "pan_rate_0": "Panning Rate",
-        "pan_depth_0": "Panning Depth"
+    {
+        "name": "Osc 1",
+        "parameters": [
+            {
+                "name": "portamento_0",
+                "label": "Glide"
+            },
+            {
+                "name": "bend_amount_0",
+                "label": "Bend Amount"
+            },
+            {
+                "name": "waveform_0",
+                "label": "Waveform"
+            },
+            {
+                "name": "level_0",
+                "label": "Level"
+            },
+            {
+                "name": "coarse_tune_0",
+                "label": "Coarse Tune"
+            },
+            {
+                "name": "fine_tune_0",
+                "label": "Fine Tune"
+            },
+            {
+                "name": "tremolo_rate_0",
+                "label": "Tremolo Rate"
+            },
+            {
+                "name": "tremolo_depth_0",
+                "label": "Tremolo Depth"
+            },
+            {
+                "name": "vibrato_rate_0",
+                "label": "Vibrato Rate"
+            },
+            {
+                "name": "vibrato_depth_0",
+                "label": "Vibrato Depth"
+            },
+            {
+                "name": "pan_0",
+                "label": "Pan"
+            },
+            {
+                "name": "pan_rate_0",
+                "label": "Panning Rate"
+            },
+            {
+                "name": "pan_depth_0",
+                "label": "Panning Depth"
+            }
+        ]
     },
-    "Oscillator 2": {
-        "portamento_1": "Glide",
-        "bend_amount_1": "Bend Amount",
-        "waveform_1": "Waveform",
-        "level_1": "Level",
-        "coarse_tune_1": "Coarse Tune",
-        "fine_tune_1": "Fine Tune",
-        "tremolo_rate_1": "Tremolo Rate",
-        "tremolo_depth_1": "Tremolo Depth",
-        "vibrato_rate_1": "Vibrato Rate",
-        "vibrato_depth_1": "Vibrato Depth",
-        "pan_1": "Pan",
-        "pan_rate_1": "Panning Rate",
-        "pan_depth_1": "Panning Depth"
+    {
+        "name": "Osc 2",
+        "parameters": [
+            {
+                "name": "portamento_1",
+                "label": "Glide"
+            },
+            {
+                "name": "bend_amount_1",
+                "label": "Bend Amount"
+            },
+            {
+                "name": "waveform_1",
+                "label": "Waveform"
+            },
+            {
+                "name": "level_1",
+                "label": "Level"
+            },
+            {
+                "name": "coarse_tune_1",
+                "label": "Coarse Tune"
+            },
+            {
+                "name": "fine_tune_1",
+                "label": "Fine Tune"
+            },
+            {
+                "name": "tremolo_rate_1",
+                "label": "Tremolo Rate"
+            },
+            {
+                "name": "tremolo_depth_1",
+                "label": "Tremolo Depth"
+            },
+            {
+                "name": "vibrato_rate_1",
+                "label": "Vibrato Rate"
+            },
+            {
+                "name": "vibrato_depth_1",
+                "label": "Vibrato Depth"
+            },
+            {
+                "name": "pan_1",
+                "label": "Pan"
+            },
+            {
+                "name": "pan_rate_1",
+                "label": "Panning Rate"
+            },
+            {
+                "name": "pan_depth_1",
+                "label": "Panning Depth"
+            }
+        ]
     }
-}
+]

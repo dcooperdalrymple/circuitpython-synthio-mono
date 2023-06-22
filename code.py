@@ -691,7 +691,6 @@ def save_json(path, data):
 
 parameters = read_json("/parameters.json")
 midi_map = read_json("/midi.json")
-menu_groups = read_json("/menu.json")
 
 exclude_mod_parameters = [
     "midi_channel",
@@ -1004,22 +1003,88 @@ def save_patch(index=0, name="Patch"):
 def read_first_patch():
     return read_patch(0)
 
-def get_parameter_label(name):
-    if not menu_groups:
-        return name
-    for group in menu_groups:
-        label = menu_groups[group].get(name, None)
-        if label:
-            return label
-    return name
-last_parameter_name = None
-last_parameter_label = None
-def display_parameter(name):
-    if not last_parameter_name or last_parameter_name != name:
-        last_parameter_label = get_parameter_label(name)
-    display.queue(last_parameter_label, get_parameter(name, True))
-
 read_first_patch()
+
+print("\n:: Setting Up Menu ::")
+
+class Menu:
+    def __init__(self):
+        self._item = None
+        self._groups = read_json("/menu.json")
+    def _get_item_by_index(self, group_index, parameter_index):
+        if not self._groups or abs(group_index) >= len(self._groups):
+            return False
+        group = self._groups[group_index]
+        parameters = group.get("parameters", [])
+        if not group or abs(parameter_index) >= len(parameters):
+            return False
+        parameter = parameters[parameter_index]
+        return {
+            "group_index": group_index % len(self._groups),
+            "group_label": group.get("name", ""),
+            "parameter_index": parameter_index % len(parameters),
+            "parameter_name": parameter.get("name", ""),
+            "parameter_label": parameter.get("label", "")
+        }
+    def _get_item_by_name(self, name):
+        if not self._groups:
+            return False
+        for i in range(len(self._groups)):
+            parameters = self._groups[i].get("parameters", [])
+            for j in range(len(parameters)):
+                 if parameters[j].get("name", "") == name:
+                     return self._get_item_by_index(i, j)
+        return False
+    def _queue(self):
+        if not self._item:
+            return False
+        display.queue(self._item["parameter_label"], self._item["group_label"], get_parameter(self._item["parameter_name"], True))
+        return True
+    def _queue_by_index(self, group_index, parameter_index):
+        item = self._get_item_by_index(group_index, parameter_index)
+        if not item:
+            return False
+        self._item = item
+        return self._queue()
+    def display(self, name=None):
+        if not name:
+            return self._queue()
+        if not self._item or self._item["parameter_name"] != name:
+            self._item = self._get_item_by_name(name)
+        return self._queue()
+    def first(self):
+        return self._queue_by_index(0, 0)
+    def last(self):
+        return self._queue_by_index(-1, -1)
+    def next(self):
+        if not self._groups:
+            return False
+        if not self._item:
+            return self.first()
+        if self._item["parameter_index"] >= len(self._groups[self._item["group_index"]].get("parameters", []))-1:
+            if self._item["group_index"] >= len(self._groups)-1:
+                return self.first()
+            return self._queue_by_index(self._item["group_index"]+1, 0)
+        else:
+            return self._queue_by_index(self._item["group_index"], self._item["parameter_index"]+1)
+    def previous(self):
+        if not self._groups:
+            return False
+        if not self._item:
+            return self.last()
+        if self._item["parameter_index"] <= 0:
+            if self._item["group_index"] <= 0:
+                return self.last()
+            return self._queue_by_index(self._item["group_index"]-1, -1)
+        else:
+            return self._queue_by_index(self._item["group_index"], self._item["parameter_index"]-1)
+    def select(self):
+        pass
+
+menu = Menu()
+encoder.set_increment(menu.next)
+encoder.set_decrement(menu.previous)
+encoder.set_release(menu.select)
 
 print("\n:: Initialization Complete ::")
 display.set_value("Ready!")
@@ -1041,7 +1106,7 @@ def control_change(control, value):
     if name:
         set_parameter(name, value)
         if control != 1:
-            display_parameter(name)
+            menu.display(name)
 
 def pitch_bend(value):
     for voice in voices:
