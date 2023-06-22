@@ -60,7 +60,7 @@ DISPLAY_WIDTH       = 128
 DISPLAY_HEIGHT      = 32
 DISPLAY_I2C_SCL     = board.GP21
 DISPLAY_I2C_SDA     = board.GP20
-DISPLAY_I2C_SPEED   = 400000
+DISPLAY_I2C_SPEED   = 1000000 # 1Mhz (Fast Mode Plus), 400kHz (Fast Mode) or 100kHz (Standard Mode)
 DISPLAY_UPDATE      = 0.2
 
 ENCODER_A           = board.GP12
