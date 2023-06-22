@@ -60,6 +60,7 @@ DISPLAY_WIDTH       = 128
 DISPLAY_HEIGHT      = 32
 DISPLAY_I2C_SCL     = board.GP21
 DISPLAY_I2C_SDA     = board.GP20
+DISPLAY_I2C_SPEED   = 400000
 DISPLAY_UPDATE      = 0.2
 
 ENCODER_A           = board.GP12
@@ -68,7 +69,7 @@ ENCODER_BTN         = board.GP7
 ENCODER_UPDATE      = 0.1
 
 SAMPLE_RATE         = 22050
-BUFFER_SIZE         = 4096
+BUFFER_SIZE         = 8192
 
 WAVE_SAMPLES        = 256
 WAVE_AMPLITUDE      = 12000 # out of 16384
@@ -113,7 +114,8 @@ class Display:
     def __init__(self):
         self.i2c = I2C(
             scl=DISPLAY_I2C_SCL,
-            sda=DISPLAY_I2C_SDA
+            sda=DISPLAY_I2C_SDA,
+            frequency=DISPLAY_I2C_SPEED
         )
         self.bus = displayio.I2CDisplay(
             self.i2c,
