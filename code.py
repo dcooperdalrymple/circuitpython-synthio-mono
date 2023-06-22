@@ -8,6 +8,8 @@ import math
 import board
 
 from digitalio import DigitalInOut, Direction, Pull
+from rotaryio import IncrementalEncoder
+from adafruit_debouncer import Debouncer
 
 import os
 import re
@@ -59,6 +61,11 @@ DISPLAY_HEIGHT      = 32
 DISPLAY_I2C_SCL     = board.GP21
 DISPLAY_I2C_SDA     = board.GP20
 DISPLAY_UPDATE      = 0.2
+
+ENCODER_A           = board.GP12
+ENCODER_B           = board.GP13
+ENCODER_BTN         = board.GP7
+ENCODER_UPDATE      = 0.1
 
 SAMPLE_RATE         = 22050
 BUFFER_SIZE         = 4096
@@ -173,6 +180,50 @@ class Display:
 display = Display()
 display.set_title("rpi-pico-synthio v1.0")
 display.set_value("Loading...")
+
+print("\n:: Initializing Encoder ::")
+
+class Encoder:
+    def __init__(self, pin_a, pin_b, pin_button):
+        self._encoder = IncrementalEncoder(pin_a, pin_b)
+        self._position = None
+        self._button_pin = DigitalInOut(pin_button)
+        self._button_pin.direction = Direction.INPUT
+        self._button_pin.pull = Pull.UP
+        self._button = Debouncer(self._button_pin)
+        self._increment = None
+        self._decrement = None
+        self._press = None
+        self._release = None
+    def set_increment(self, callback):
+        self._increment = callback
+    def set_decrement(self, callback):
+        self._decrement = callback
+    def set_press(self, callback):
+        self._press = callback
+    def set_release(self, callback):
+        self._release = callback
+    def update(self):
+        position = self._encoder.position
+        if not self._position is None and position != self._position:
+            p = position
+            if position > self._position and self._increment:
+                while p > self._position:
+                    p=p-1
+                    self._increment()
+            elif position < self._position and self._decrement:
+                while p < self._position:
+                    p=p+1
+                    self._decrement()
+        self._position = position
+        self._button.update()
+        if self._button.fell and self._press:
+            self._press()
+        elif self._button.rose and self._release:
+            self._release()
+    def deinit(self):
+        self._encoder.deinit()
+encoder = Encoder(ENCODER_A, ENCODER_B, ENCODER_BTN)
 
 print("\n:: Initializing Midi ::")
 
@@ -1017,6 +1068,7 @@ def process_midi_msgs(midi, limit=32):
         limit = limit - 1
 
 last_midi_now = 0
+last_encoder_now = 0
 last_display_now = 0
 while True:
     now = time.monotonic()
@@ -1027,6 +1079,10 @@ while True:
         process_midi_msgs(usb_midi)
         if ble and ble.connected and ble_midi:
             process_midi_msgs(ble_midi)
+
+    if now >= last_encoder_now + ENCODER_UPDATE:
+        last_encoder_now = now
+        encoder.update()
 
     if now >= last_display_now + DISPLAY_UPDATE:
         last_display_now = now
@@ -1043,6 +1099,9 @@ mixer.deinit()
 
 print("Audio")
 audio.deinit()
+
+print("Encoder")
+encoder.deinit()
 
 print("Display")
 displayio.release_displays()
