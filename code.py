@@ -946,7 +946,14 @@ def get_patch_index(filename):
         return 0
     return int(filename[0:2])
 def list_patches():
-    return [filename for filename in os.listdir("/patches") if valid_patch_filename(filename)]
+    try:
+        os.stat("/patches")
+    except:
+        os.mkdir("/patches")
+    try:
+        return [filename for filename in os.listdir("/patches") if valid_patch_filename(filename)]
+    except:
+        return []
 
 exclude_patch_parameters = [
     "midi_channel",
