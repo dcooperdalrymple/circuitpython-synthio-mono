@@ -15,6 +15,7 @@ import os
 import re
 import json
 import storage
+import adafruit_wave
 
 from busio import UART
 import usb_midi
@@ -318,13 +319,78 @@ audio.play(mixer)
 print("\n:: Initializing Synthio ::")
 
 print("Building Waveforms")
-waveforms = {
-    "saw": numpy.linspace(WAVE_AMPLITUDE, -WAVE_AMPLITUDE, num=WAVE_SAMPLES, dtype=numpy.int16),
-    "reverse_saw": numpy.array(numpy.flip(numpy.linspace(WAVE_AMPLITUDE, -WAVE_AMPLITUDE, num=WAVE_SAMPLES, dtype=numpy.int16)), dtype=numpy.int16),
-    "square": numpy.concatenate((numpy.ones(WAVE_SAMPLES//2, dtype=numpy.int16)*WAVE_AMPLITUDE,numpy.ones(WAVE_SAMPLES//2, dtype=numpy.int16)*-WAVE_AMPLITUDE)),
-    "sine": numpy.array(numpy.sin(numpy.linspace(0, 4*numpy.pi, WAVE_SAMPLES, endpoint=False)) * WAVE_AMPLITUDE, dtype=numpy.int16),
-    "noise": numpy.array([random.randint(-WAVE_AMPLITUDE, WAVE_AMPLITUDE) for i in range(WAVE_SAMPLES)], dtype=numpy.int16)
-}
+
+waveforms = [
+    {
+        "name": "saw",
+        "data": numpy.linspace(WAVE_AMPLITUDE, -WAVE_AMPLITUDE, num=WAVE_SAMPLES, dtype=numpy.int16)
+    },
+    {
+        "name": "reverse_saw",
+        "data": numpy.array(numpy.flip(numpy.linspace(WAVE_AMPLITUDE, -WAVE_AMPLITUDE, num=WAVE_SAMPLES, dtype=numpy.int16)), dtype=numpy.int16)
+    },
+    {
+        "name": "square",
+        "data": numpy.concatenate((numpy.ones(WAVE_SAMPLES//2, dtype=numpy.int16)*WAVE_AMPLITUDE,numpy.ones(WAVE_SAMPLES//2, dtype=numpy.int16)*-WAVE_AMPLITUDE))
+    },
+    {
+        "name": "sine",
+        "data": numpy.array(numpy.sin(numpy.linspace(0, 4*numpy.pi, WAVE_SAMPLES, endpoint=False)) * WAVE_AMPLITUDE, dtype=numpy.int16)
+    },
+    {
+        "name": "noise",
+        "data": numpy.array([random.randint(-WAVE_AMPLITUDE, WAVE_AMPLITUDE) for i in range(WAVE_SAMPLES)], dtype=numpy.int16)
+    }
+]
+
+print("Appending Wav File Waveforms")
+
+def get_waveform_by_name(name, index=False):
+    global waveforms
+    for i in range(len(waveforms)):
+        if waveforms[i].get("name", "") == name:
+            if index:
+                return i
+            else:
+                return waveforms[i]
+    if index:
+        return 0
+    else:
+        return None
+
+def read_waveform(filename):
+    with adafruit_wave.open("/waveforms/"+filename) as w:
+        if w.getsampwidth() != 2 or w.getnchannels() != 1:
+            print("Failed to read {}: unsupported format".format(filename))
+            return None
+        # Read into numpy array, resize (with linear interpolation) into designated buffer size, and normalize
+        data = numpy.frombuffer(w.readframes(w.getnframes()), dtype=numpy.int16)
+        data = numpy.array(numpy.interp(numpy.linspace(0,1,WAVE_SAMPLES), numpy.linspace(0,1,data.size), data), dtype=numpy.int16)
+        norm = max(numpy.max(data), abs(numpy.min(data)))
+        if not norm:
+            return data
+        return numpy.array(data*(WAVE_AMPLITUDE/norm), dtype=numpy.int16)
+    return None
+def valid_waveform_filename(filename):
+    return len(filename) > len("a.wav") and filename[-4:] == ".wav"
+def get_waveform_name(filename):
+    if not valid_waveform_filename(filename):
+        return ""
+    return str(filename[:-4])
+def list_waveforms():
+    try:
+        return [filename for filename in os.listdir("/waveforms") if valid_waveform_filename(filename)]
+    except:
+        return []
+
+waveform_files = list_waveforms()
+if waveform_files:
+    for filename in waveform_files:
+        if valid_waveform_filename(filename):
+            waveforms.append({
+                "name": get_waveform_name(filename),
+                "data": read_waveform(filename)
+            })
 
 print("Generating Synth")
 synth = synthio.Synthesizer(
@@ -379,13 +445,18 @@ def unmap_boolean(value):
     else:
         return 0.0
 
-def map_array(value, arr):
+def map_array(value, arr, index=False):
     if type(value) == type(""):
         if not value in arr:
-            return arr[0]
-        return value
-    index = math.floor(max(min(value * len(arr), len(arr) - 1), 0))
-    return arr[index]
+            i = 0
+        else:
+            i = arr.index(value)
+    else:
+        i = math.floor(max(min(value * len(arr), len(arr) - 1), 0))
+    if index:
+        return i
+    else:
+        return arr[i]
 def unmap_array(value, arr):
     if not value in arr:
         return 0.0
@@ -404,7 +475,7 @@ class Voice:
         self.notenum = 0
         self.velocity = 0.0
 
-        self.waveform = "saw"
+        self.waveform = 0
         self._waveform = self.waveform
         self.coarse_tune = 0.5
         self.fine_tune = 0.5
@@ -429,19 +500,19 @@ class Voice:
             frequency=0.0,
             envelope=self.build_envelope(),
             amplitude=synthio.LFO( # Tremolo
-                waveform=waveforms.get("sine", None),
+                waveform=get_waveform_by_name("sine").get("data", None),
                 rate=1.0,
                 scale=0.0,
                 offset=1.0
             ),
             bend=synthio.LFO( # Vibrato
-                waveform=waveforms.get("sine", None),
+                waveform=get_waveform_by_name("sine").get("data", None),
                 rate=1.0,
                 scale=0.0,
                 offset=0.0
             ),
             panning=synthio.LFO( # Panning
-                waveform=waveforms.get("sine", None),
+                waveform=get_waveform_by_name("sine").get("data", None),
                 rate=1.0,
                 scale=0.0,
                 offset=0.0
@@ -483,14 +554,19 @@ class Voice:
         return 1.0 - (1.0 - self.velocity) * self.velocity_amount
 
     def set_waveform(self, value, update=True):
-        self.waveform = map_dict(value, waveforms)
+        global waveforms
+        if type(value) == type(""):
+            self.waveform = get_waveform_by_name(value, True)
+        else:
+            self.waveform = map_array(value, waveforms, True)
         if update and self.waveform != self._waveform:
             self._waveform = self.waveform
             self.update_waveform()
     def update_waveform(self):
         self.note.waveform = self.get_waveform()
     def get_waveform(self):
-        return waveforms.get(self.waveform, None)
+        global waveforms
+        return waveforms[self.waveform].get("data", None)
 
     def build_filter(self):
         type = self.get_filter_type()
@@ -891,9 +967,10 @@ def get_parameter(name, format=False, translate=True):
 
     elif name == "waveform":
         if format or translate:
-            return param_voice.waveform
+            global waveforms
+            return waveforms[param_voice.waveform].get("name", param_voice.waveform)
         else:
-            return unmap_dict(param_voice.waveform, waveforms)
+            return param_voice.waveform/(len(waveforms)-1)
     elif name == "level":
         return param_voice.note.amplitude.offset
     elif name == "coarse_tune":
@@ -946,10 +1023,6 @@ def get_patch_index(filename):
         return 0
     return int(filename[0:2])
 def list_patches():
-    try:
-        os.stat("/patches")
-    except:
-        os.mkdir("/patches")
     try:
         return [filename for filename in os.listdir("/patches") if valid_patch_filename(filename)]
     except:

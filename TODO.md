@@ -6,7 +6,6 @@
 - LFO Waveforms
 - LFO Delay?
 - Polyphony?
-- Load waveforms from wav files
 - Global filter
 - Filter envelope
 - Envelope retrigger
