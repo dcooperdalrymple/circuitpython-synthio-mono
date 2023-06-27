@@ -1,4 +1,4 @@
-# CircuitPython synthio Portamento Example
+# CircuitPython synthio Portamento with Single Shot LFO Example
 # 2023 Cooper Dalrymple - me@dcdalrymple.com
 # GPL v3 License
 
@@ -13,8 +13,8 @@ I2S_CLK             = board.GP0
 I2S_WS              = board.GP1
 I2S_DATA            = board.GP2
 
-SAMPLE_RATE         = 22050
-BUFFER_SIZE         = 8192
+SAMPLE_RATE         = 44100
+BUFFER_SIZE         = 256
 LEVEL               = 0.5
 
 NOTE_ROOT           = 60 # C4
@@ -48,21 +48,31 @@ synth = synthio.Synthesizer(
 )
 mixer.voice[0].play(synth)
 
-# Setup a math object to calculate the linear interpolation between "a" and "b" as controlled by "c"
-lerp = synthio.Math(synthio.MathOperation.CONSTRAINED_LERP, 0.0, 0.0, 0.0)
+# Single shot LFO to control interpolation between frequency
+lerp_position = synthio.LFO(
+    waveform=numpy.linspace(-16385, 16385, num=2, dtype=numpy.int16),
+    rate=NOTE_SPEED,
+    scale=1.0,
+    offset=0.5,
+    once=True
+)
+synth.blocks.append(lerp_position)
+
+# Setup a math object to calculate the linear interpolation between "a" and "b" as controlled by "c" (the single shot position LFO)
+lerp = synthio.Math(synthio.MathOperation.CONSTRAINED_LERP, 0.0, 0.0, lerp_position)
 synth.blocks.append(lerp)
 
 # Generate a simple vibrato LFO object
-lfo = synthio.LFO(
+vibrato = synthio.LFO(
     waveform=waveform,
     rate=1.0,
     scale=0.1,
     offset=0.0
 )
-synth.blocks.append(lfo)
+synth.blocks.append(vibrato)
 
 # Setup another math object to add the interpolation and lfo values together for the final calculated bend value; None=0.0 (not used)
-sum = synthio.Math(synthio.MathOperation.SUM, lerp, lfo, None)
+sum = synthio.Math(synthio.MathOperation.SUM, lerp, vibrato, None) # The 3rd input could be used for pitch bend
 synth.blocks.append(sum)
 
 # Construct a note object with the designated root frequency and have it always on
@@ -74,7 +84,6 @@ note = synthio.Note(
 synth.press(note)
 
 while True:
-    note_last = time.monotonic()
 
     # Set start to last lerp position in case it is changed between glides
     lerp.a = lerp.value
@@ -86,14 +95,6 @@ while True:
     lerp.b = frequency / note.frequency - 1.0
 
     # Reset the position of the interpolation operation
-    lerp.c = 0.0
+    lerp_position.retrigger()
 
-    while True:
-
-        # Check if we need a new frequency
-        now = time.monotonic()
-        if now - note_last > NOTE_UPDATE:
-            break
-
-        # Increment the interpolation operation from 0.0 => 1.0
-        lerp.c = (now - note_last) * NOTE_SPEED
+    time.sleep(NOTE_UPDATE)
