@@ -9,3 +9,4 @@
 - Envelope retrigger
 - REAPER JSFX Controller Plugin
 - Memory optimization
+- Patch saving and loading menu system

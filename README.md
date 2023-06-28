@@ -1,5 +1,7 @@
 # CircuitPython synthio Monophonic Synthesizer
-Demonstration of CircuitPython's synthio module using the RP2040, UART/USB/BLE MIDI input, and I2S audio output. Controlled with a MIDI control interface or with a SSD1306-based 128x32 OLED and momentary switch rotary encoder.
+Parametric monophonic synthesizer built using CircuitPython's synthio module using the RP2040, UART/USB/BLE MIDI input, and I2S audio output. Controlled with a MIDI control interface or with a SSD1306-based 128x32 OLED and momentary switch rotary encoder.
+
+[![Demonstration Video Thumbnail](assets/thumb.jpg)](https://www.youtube.com/watch?v=uuqIeZu2VT8 "Watch a demonstration of this project on YouTube")
 
 ## Features
 
@@ -35,3 +37,7 @@ Demonstration of CircuitPython's synthio module using the RP2040, UART/USB/BLE M
 1. Download and install CircuitPython bootloader: [instructions & UF2 file](https://circuitpython.org/board/raspberry_pi_pico/).
 2. Add all provided libraries in `/lib/` to CircuitPython internal storage.
 3. Copy `boot.py`, `code.py`, and `midi.json` into the CircuitPython device's root directory.
+
+## Hardware Installation
+
+_Coming soon..._
