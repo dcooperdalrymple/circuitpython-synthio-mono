@@ -1,12 +1,11 @@
 # TODO
 
-**Updated:** 2023-06-22
+**Updated:** 2023-06-28
 
-- Portamento
 - LFO Waveforms
 - LFO Delay?
 - Polyphony?
-- Global filter
 - Filter envelope
 - Envelope retrigger
 - REAPER JSFX Controller Plugin
+- Memory optimization

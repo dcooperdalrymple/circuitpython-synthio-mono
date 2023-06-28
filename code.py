@@ -3,18 +3,13 @@
 # GPL v3 License
 # Version 1.0
 
-import time
-import math
-import board
+import time, math, random, board
 
 from digitalio import DigitalInOut, Direction, Pull
 from rotaryio import IncrementalEncoder
 from adafruit_debouncer import Debouncer
 
-import os
-import re
-import json
-import storage
+import os, storage, json, re
 import adafruit_wave
 
 from busio import UART
@@ -33,21 +28,18 @@ from audiobusio import I2SOut
 from audiomixer import Mixer
 
 from busio import I2C
-import displayio
-import adafruit_displayio_ssd1306
-import terminalio
+import displayio, adafruit_displayio_ssd1306, terminalio
 from adafruit_display_text import label
 
 import synthio
-import random
 import ulab.numpy as numpy
 
 # Program Constants
 
 MAP_THRESHOLD       = 0.0
 
-MIDI_CHANNEL_MAX    = 16
-MIDI_CHANNEL_MIN    = 1
+MIDI_CHANNEL_MAX    = 15
+MIDI_CHANNEL_MIN    = 0
 MIDI_TX             = board.GP4
 MIDI_RX             = board.GP5
 MIDI_UPDATE         = 0.05
@@ -70,27 +62,25 @@ ENCODER_BTN         = board.GP7
 ENCODER_UPDATE      = 0.1
 
 SAMPLE_RATE         = 22050
-BUFFER_SIZE         = 8192
+BUFFER_SIZE         = 4096
 
 WAVE_SAMPLES        = 256
 WAVE_AMPLITUDE      = 12000 # out of 16384
 
-COARSE_TUNE_MAX     = 2.0
-COARSE_TUNE_MIN     = 0.5
+COARSE_TUNE         = 2.0
+FINE_TUNE           = 1.0/12.0
+BEND_AMOUNT         = 1.0
 
-FINE_TUNE_MAX       = 1.0+1.0/12.0
-FINE_TUNE_MIN       = 1.0-1.0/12.0/2
-
-FILTER_FREQ_MAX     = min(SAMPLE_RATE*0.45, 20000)
-FILTER_FREQ_MIN     = 60
+FILTER_FREQ_MAX     = min(SAMPLE_RATE*0.45, 20000.0)
+FILTER_FREQ_MIN     = 60.0
 FILTER_RES_MAX      = 16.0
 FILTER_RES_MIN      = 0.25
 
 ENVELOPE_TIME_MAX   = 2.0
 ENVELOPE_TIME_MIN   = 0.05
 
-BEND_AMOUNT_MAX     = 2.0
-BEND_AMOUNT_MIN     = 1.0/12.0
+GLIDE_MAX           = 2.0
+GLIDE_MIN           = 0.05
 
 # Release REPL
 displayio.release_displays()
@@ -403,7 +393,12 @@ print("Building Voice")
 filter_types = ["lpf", "hpf", "bpf"]
 
 def map_value(value, min_value, max_value):
-    return min(max((value * (max_value - min_value)) + min_value, min_value), max_value)
+    value = min(max(value, 0.0), 1.0)
+    value = (value * (max_value - min_value)) + min_value
+    if type(min_value) is int:
+        return round(value)
+    else:
+        return value
 def unmap_value(value, min_value, max_value):
     return (min(max(value, min_value), max_value) - min_value) / (max_value - min_value)
 
@@ -470,15 +465,133 @@ def map_dict(value, dict):
 def unmap_dict(value, dict):
     return unmap_array(value, list(dict))
 
+class LerpBlockInput:
+    def __init__(self, rate=1.0, value=0.0):
+        self.position = synthio.LFO(
+            waveform=numpy.linspace(-16385, 16385, num=2, dtype=numpy.int16),
+            rate=1/rate,
+            scale=1.0,
+            offset=0.5,
+            once=True
+        )
+        synth.blocks.append(self.position)
+        self.lerp = synthio.Math(synthio.MathOperation.CONSTRAINED_LERP, value, value, self.position)
+        synth.blocks.append(self.lerp)
+    def get(self):
+        return self.lerp
+    def set(self, value):
+        self.lerp.a = self.lerp.value
+        self.lerp.b = value
+        self.position.retrigger()
+    def set_rate(self, value):
+        self.position.rate = 1/value
+    def get_rate(self):
+        return self.position.rate
+
+class Oscillator:
+    def __init__(self, root=440.0):
+        self._log2 = math.log(2) # for octave conversion optimization
+
+        self.coarse_tune = 0.0
+        self.fine_tune = 0.0
+        self.bend_amount = 0.0
+        self.bend = 0.0
+
+        self.root = root
+        self.frequency_lerp = LerpBlockInput()
+        self.vibrato = synthio.LFO(
+            waveform=get_waveform_by_name("sine").get("data", None),
+            rate=1.0,
+            scale=0.0,
+            offset=0.0
+        )
+        self.pitch_bend_lerp = LerpBlockInput(rate=GLIDE_MIN)
+        self.note = synthio.Note(
+            waveform=None,
+            frequency=root,
+            amplitude=synthio.LFO( # Tremolo
+                waveform=get_waveform_by_name("sine").get("data", None),
+                rate=1.0,
+                scale=0.0,
+                offset=1.0
+            ),
+            bend=synthio.Math(synthio.MathOperation.SUM, self.frequency_lerp.get(), self.vibrato, self.pitch_bend_lerp.get()),
+            panning=synthio.LFO( # Panning
+                waveform=get_waveform_by_name("sine").get("data", None),
+                rate=1.0,
+                scale=0.0,
+                offset=0.0
+            )
+        )
+        synth.blocks.append(self.note.amplitude)
+        synth.blocks.append(self.note.bend)
+        synth.blocks.append(self.note.panning)
+
+    def set_frequency(self, value):
+        self.frequency_lerp.set(math.log(value/self.root)/self._log2)
+    def set_glide(self, value):
+        self.frequency_lerp.set_rate(value)
+
+    def set_pitch_bend_amount(self, value):
+        self.bend_amount = value
+        self._update_pitch_bend()
+    def set_pitch_bend(self, value=None):
+        self.bend = value
+        self._update_pitch_bend()
+    def _update_pitch_bend(self):
+        self.pitch_bend_lerp.set(self.bend * self.bend_amount)
+
+    def set_coarse_tune(self, value):
+        self.coarse_tune = value
+        self._update_root()
+    def set_fine_tune(self, value):
+        self.fine_tune = value
+        self._update_root()
+    def _update_root(self):
+        self.note.frequency = self.root * pow(2,self.coarse_tune) * pow(2,self.fine_tune)
+
+    def set_waveform(self, value):
+        waveform = None
+        if type(value) is int:
+            waveform = waveforms[value]
+        elif type(value) is str:
+            waveform = get_waveform_by_name(value)
+        if not waveform:
+            self.note.waveform = None
+        else:
+            self.note.waveform = waveform.get("data", None)
+
+    def press(self):
+        synth.press(self.note)
+    def release(self):
+        synth.release(self.note)
+
+    def set_envelope(self, envelope):
+        self.note.envelope = envelope
+    def set_filter(self, filter):
+        self.note.filter = filter
+
+    def set_level(self, value):
+        self.note.amplitude.offset = value
+    def set_tremolo_rate(self, value):
+        self.note.amplitude.rate = value
+    def set_tremolo_depth(self, value):
+        self.note.amplitude.scale = value
+    def set_vibrato_rate(self, value):
+        self.vibrato.rate = value
+    def set_vibrato_depth(self, value):
+        self.vibrato.scale = value
+    def set_pan_rate(self, value):
+        self.note.panning.rate = value
+    def set_pan_depth(self, value):
+        self.note.panning.scale = value
+    def set_pan(self, value):
+        self.note.panning.offset = value
+
 class Voice:
     def __init__(self):
-        self.notenum = 0
+        self.note = -1
         self.velocity = 0.0
-
-        self.waveform = 0
-        self._waveform = self.waveform
-        self.coarse_tune = 0.5
-        self.fine_tune = 0.5
 
         self.velocity_amount = 1.0
         self.attack_time = 0.0
@@ -487,88 +600,64 @@ class Voice:
         self.attack_level = 1.0
         self.sustain_level = 0.75
 
-        self.filter_type = "lpf"
+        self.filter_type = 0
         self._filter_type = self.filter_type
         self.filter_frequency = 1.0
         self.filter_resonance = 0.0
 
-        self.bend = 0.0
-        self.bend_amount = 0.0
+        self.oscillators = (Oscillator(), Oscillator())
 
-        self.note = synthio.Note(
-            waveform=self.get_waveform(),
-            frequency=0.0,
-            envelope=self.build_envelope(),
-            amplitude=synthio.LFO( # Tremolo
-                waveform=get_waveform_by_name("sine").get("data", None),
-                rate=1.0,
-                scale=0.0,
-                offset=1.0
-            ),
-            bend=synthio.LFO( # Vibrato
-                waveform=get_waveform_by_name("sine").get("data", None),
-                rate=1.0,
-                scale=0.0,
-                offset=0.0
-            ),
-            panning=synthio.LFO( # Panning
-                waveform=get_waveform_by_name("sine").get("data", None),
-                rate=1.0,
-                scale=0.0,
-                offset=0.0
-            ),
-            filter=self.build_filter()
-        )
-        synth.blocks.append(self.note.amplitude)
-        synth.blocks.append(self.note.bend)
-        synth.blocks.append(self.note.panning)
-
-    def press(self, notenum, velocity):
+    def press(self, note, velocity):
         self.velocity = velocity
-        self.update_envelope()
-        if notenum != self.notenum:
-            self.set_frequency(notenum)
-            synth.press(self.note)
+        self._update_envelope()
+        if note != self.note:
+            frequency = synthio.midi_to_hz(note)
+            for oscillator in self.oscillators:
+                oscillator.set_frequency(frequency)
+                oscillator.press()
     def release(self):
-        synth.release(self.note)
-        self.notenum = 0
+        for oscillator in self.oscillators:
+            oscillator.release()
+        self.note = -1
 
-    def get_frequency(self, notenum=None):
-        if not notenum:
-            notenum = self.notenum
-        return synthio.midi_to_hz(notenum) * map_value_centered(self.coarse_tune, COARSE_TUNE_MIN, 1.0, COARSE_TUNE_MAX) * map_value_centered(self.fine_tune, FINE_TUNE_MIN, 1.0, FINE_TUNE_MAX)
-    def set_frequency(self, notenum=None):
-        if notenum:
-            self.notenum = notenum
-        self.note.frequency = self.get_frequency()
-    def set_coarse_tune(self, value, update=True):
-        self.coarse_tune = value
-        if update:
-            self.set_frequency()
-    def set_fine_tune(self, value, update=True):
-        self.fine_tune = value
-        if update:
-            self.set_frequency()
-
-    def get_velocity_mod(self):
-        return 1.0 - (1.0 - self.velocity) * self.velocity_amount
-
-    def set_waveform(self, value, update=True):
-        global waveforms
-        if type(value) == type(""):
-            self.waveform = get_waveform_by_name(value, True)
+    def set_glide(self, value, index=None):
+        if not index is None:
+            self.oscillators[index].set_glide(value)
         else:
-            self.waveform = map_array(value, waveforms, True)
-        if update and self.waveform != self._waveform:
-            self._waveform = self.waveform
-            self.update_waveform()
-    def update_waveform(self):
-        self.note.waveform = self.get_waveform()
-    def get_waveform(self):
-        global waveforms
-        return waveforms[self.waveform].get("data", None)
+            for oscillator in self.oscillators:
+                oscillator.set_glide(value)
 
-    def build_filter(self):
+    def set_pitch_bend_amount(self, value, index=None):
+        if not index is None:
+            self.oscillators[index].set_pitch_bend_amount(value)
+        else:
+            for oscillator in self.oscillators:
+                oscillator.set_pitch_bend_amount(value)
+    def set_pitch_bend(self, value):
+        for oscillator in self.oscillators:
+            oscillator.set_pitch_bend(value)
+
+    def set_coarse_tune(self, value, index=None):
+        if not index is None:
+            self.oscillators[index].set_coarse_tune(value)
+        else:
+            for oscillator in self.oscillators:
+                oscillator.set_coarse_tune(value)
+    def set_fine_tune(self, value, index=None):
+        if not index is None:
+            self.oscillators[index].set_fine_tune(value)
+        else:
+            for oscillator in self.oscillators:
+                oscillator.set_fine_tune(value)
+
+    def set_waveform(self, value, index=None):
+        if not index is None:
+            self.oscillators[index].set_waveform(value)
+        else:
+            for oscillator in self.oscillators:
+                oscillator.set_waveform(value)
+
+    def _build_filter(self):
         type = self.get_filter_type()
         if type == "lpf":
             return synth.low_pass_filter(self.get_filter_frequency(), self.get_filter_resonance())
@@ -576,92 +665,91 @@ class Voice:
             return synth.high_pass_filter(self.get_filter_frequency(), self.get_filter_resonance())
         else: # "bpf"
             return synth.band_pass_filter(self.get_filter_frequency(), self.get_filter_resonance())
-    def update_filter(self):
-        self.note.filter = self.build_filter()
+    def _update_filter(self):
+        filter = self._build_filter()
+        for oscillator in self.oscillators:
+            oscillator.set_filter(filter)
     def get_filter_type(self):
-        return self.filter_type
+        if type(self.filter_type) is int:
+            return filter_types[self.filter_type]
+        elif type(self.filter_type) is str:
+            return self.filter_type
+        else:
+            return None
     def set_filter_type(self, value, update=True):
-        self.filter_type = map_array(value, filter_types)
+        self.filter_type = value
         if update and self.filter_type != self._filter_type:
             self._filter_type = self.filter_type
-            self.update_filter()
+            self._update_filter()
     def set_filter_frequency(self, value, update=True):
         self.filter_frequency = value
         if update:
-            self.update_filter()
-    def get_filter_frequency(self, map=True):
-        if map:
-            return map_value(self.filter_frequency, FILTER_FREQ_MIN, FILTER_FREQ_MAX)
-        else:
-            return self.filter_frequency
+            self._update_filter()
+    def get_filter_frequency(self):
+        return self.filter_frequency
     def set_filter_resonance(self, value, update=True):
         self.filter_resonance = value
         if update:
-            self.update_filter()
-    def get_filter_resonance(self, map=True):
-        if map:
-            return map_value(self.filter_resonance, FILTER_RES_MIN, FILTER_RES_MAX)
-        else:
-            return self.filter_resonance
+            self._update_filter()
+    def get_filter_resonance(self):
+        return self.filter_resonance
 
-    def build_envelope(self):
+    def _get_velocity_mod(self):
+        return 1.0 - (1.0 - self.velocity) * self.velocity_amount
+    def _build_envelope(self):
+        mod = self._get_velocity_mod()
         return synthio.Envelope(
-            attack_time=self.get_envelope_attack_time(True),
-            decay_time=self.get_envelope_decay_time(True),
-            release_time=self.get_envelope_release_time(True),
-            attack_level=self.get_velocity_mod() * self.attack_level,
-            sustain_level=self.get_velocity_mod() * self.sustain_level
+            attack_time=self.attack_time,
+            decay_time=self.decay_time,
+            release_time=self.release_time,
+            attack_level=mod*self.attack_level,
+            sustain_level=mod*self.sustain_level
         )
-    def update_envelope(self):
-        self.note.envelope = self.build_envelope()
+    def _update_envelope(self):
+        envelope = self._build_envelope()
+        for oscillator in self.oscillators:
+            oscillator.set_envelope(envelope)
+    def set_velocity_amount(self, value):
+        self.velocity_amount = value
     def set_envelope_attack_time(self, value, update=True):
         self.attack_time = value
         if update:
-            self.update_envelope()
-    def get_envelope_attack_time(self, format=True):
-        if format:
-            return map_value(self.attack_time, ENVELOPE_TIME_MIN, ENVELOPE_TIME_MAX)
-        else:
-            return self.attack_time
+            self._update_envelope()
+    def get_envelope_attack_time(self):
+        return self.attack_time
     def set_envelope_decay_time(self, value, update=True):
         self.decay_time = value
         if update:
-            self.update_envelope()
-    def get_envelope_decay_time(self, format=True):
-        if format:
-            return map_value(self.decay_time, ENVELOPE_TIME_MIN, ENVELOPE_TIME_MAX)
-        else:
-            return self.decay_time
+            self._update_envelope()
+    def get_envelope_decay_time(self):
+        return self.decay_time
     def set_envelope_release_time(self, value, update=True):
         self.release_time = value
         if update:
-            self.update_envelope()
-    def get_envelope_release_time(self, format=True):
-        if format:
-            return map_value(self.release_time, ENVELOPE_TIME_MIN, ENVELOPE_TIME_MAX)
-        else:
-            return self.release_time
+            self._update_envelope()
+    def get_envelope_release_time(self):
+        return self.release_time
     def set_envelope_attack_level(self, value, update=True):
         self.attack_level = value
         if update:
-            self.update_envelope()
+            self._update_envelope()
+    def get_envelope_attack_level(self):
+        return self.attack_level
     def set_envelope_sustain_level(self, value, update=True):
         self.sustain_level = value
         if update:
-            self.update_envelope()
+            self._update_envelope()
+    def get_envelope_sustain_level(self):
+        return self.sustain_level
 
-    def update_bend(self):
-        self.note.bend.offset = self.bend * map_value(self.bend_amount, BEND_AMOUNT_MIN, BEND_AMOUNT_MAX)
-    def set_bend(self, value, update=True):
-        self.bend = value
-        if update:
-            self.update_bend()
-    def set_bend_amount(self, value, update=True):
-        self.bend_amount = value
-        if update:
-            self.update_bend()
+    def set_pan(self, value, index=None):
+        if not index is None:
+            self.oscillators[index].set_pan(value)
+        else:
+            for oscillator in self.oscillators:
+                oscillator.set_pan(value)
 
-voices = [Voice(), Voice()]
+voice = Voice()
 
 print("Managing Keyboard")
 
@@ -669,7 +757,7 @@ note_types = ["high", "low", "last"]
 class Keyboard:
     def __init__(self):
         self.notes = []
-        self.type = note_types[0]
+        self.type = 0
         self.sustain = False
         self.sustained = []
 
@@ -678,10 +766,10 @@ class Keyboard:
     def set_sustain(self, value, update=True):
         value = map_boolean(value)
         if value != self.sustain:
-            self.sustain = val
+            self.sustain = value
             self.sustained = []
             if self.sustain:
-                self.sustained = self.notes.view() # shallow copy
+                self.sustained = self.notes.copy()
             if update:
                 self.update()
 
@@ -701,17 +789,22 @@ class Keyboard:
                     selected = note
         if self.sustain and self.sustained:
             for note in self.sustained:
-                if note[0] < notenum:
+                if note[0] < selected[0]:
                     selected = note
-        return note
+        return selected
     def _get_high(self):
         if not self._has_notes():
             return None
         selected = (0, 0)
-        for note in self.notes:
-            if note[0] > selected[0]:
-                selected = note
-        return note
+        if self.notes:
+            for note in self.notes:
+                if note[0] > selected[0]:
+                    selected = note
+        if self.sustain and self.sustained:
+            for note in self.sustained:
+                if note[0] > selected[0]:
+                    selected = note
+        return selected
     def _get_last(self):
         if self.sustain and self.sustained:
             return self.sustained[-1]
@@ -719,9 +812,10 @@ class Keyboard:
             return self.notes[-1]
         return None
     def get(self):
-        if self.type == "high":
+        type = note_types[self.type]
+        if type == "high":
             return self._get_high()
-        elif self.type == "low":
+        elif type == "low":
             return self._get_low()
         else: # "last"
             return self._get_last()
@@ -744,11 +838,9 @@ class Keyboard:
     def update(self):
         note = self.get()
         if not note:
-            for voice in voices:
-                voice.release()
+            voice.release()
         else:
-            for voice in voices:
-                voice.press(note[0], note[1])
+            voice.press(note[0], note[1])
 
 keyboard = Keyboard()
 
@@ -775,243 +867,473 @@ def save_json(path, data):
     print("Successfully written JSON file: {}".format(path))
     return True
 
-parameters = read_json("/parameters.json")
-midi_map = read_json("/midi.json")
-
-exclude_mod_parameters = [
-    "midi_channel",
-    "midi_thru"
-]
-mod_parameters = [name for name in parameters if not name in exclude_mod_parameters]
-mod_parameter = mod_parameters[0]
-
-def set_parameter(name, value, update=True):
-    if not name in parameters:
-        return False
-
-    index = name[-1]
-    if index.isdigit():
-        index = int(index)
-        name = name[:len(name)-2]
-        if index >= len(voices):
+class Parameter:
+    def __init__(self, name="", label="", group="", range=None, value=0.0, set_callback=None, set_argument=None, object=None, property=None, mod=True, patch=True):
+        self.name = name
+        self.label = label
+        self.group = group
+        self.range = range
+        self.set_callback = set_callback
+        self.set_argument = set_argument
+        self.object = object
+        self.property = property
+        self.mod = mod
+        self.patch = patch
+        self.set(value)
+    def set(self, value):
+        if type(value) is str:
+            if type(self.range) is dict:
+                value = unmap_dict(value, self.range)
+            elif type(self.range) is list:
+                value = unmap_array(value, self.range)
+        value = min(max(value, 0.0), 1.0)
+        if hasattr(self, "raw_value") and value == self.raw_value:
             return False
-    else:
-        index = None
+        self.raw_value = value
+        if type(self.range) is dict:
+            value = map_dict(value, self.range)
+        elif type(self.range) is list:
+            value = map_array(value, self.range, True)
+        elif type(self.range) is tuple:
+            if len(self.range) == 4: # Centered with threshold
+                value = map_value_centered(value, self.range[0], self.range[1], self.range[2], self.range[3])
+            elif len(self.range) == 3: # Centered
+                value = map_value_centered(value, self.range[0], self.range[1], self.range[2])
+            elif len(self.range) == 2: # Linear range
+                value = map_value(value, self.range[0], self.range[1])
+        elif type(self.range) is int or type(self.range) is float: # +/- linear range
+            value = map_value(value, -self.range, self.range)
+        elif type(self.range) is bool:
+            value = map_boolean(value)
+        self.format_value = value
+        if self.set_callback:
+            if self.set_argument:
+                self.set_callback(value, self.set_argument)
+            else:
+                self.set_callback(value)
+        elif self.object and self.property:
+            if type(self.object) is dict:
+                self.object[self.property] = value
+            elif hasattr(self.object, self.property):
+                setattr(self.object, self.property, value)
+        return True
+    def get(self):
+        return self.raw_value
+    def get_formatted_value(self, translate=True):
+        if translate:
+            value = None
+            if type(self.range) is dict:
+                value = list(self.range)[self.format_value]
+            elif type(self.range) is list:
+                value = self.range[self.format_value]
+            if value:
+                if type(value) is str:
+                    return value
+                elif type(value) is dict:
+                    if value.get("label", None):
+                        return value.get("label")
+                    elif value.get("name", None):
+                        return value.get("name")
+                elif hasattr(value, "label"):
+                    return value.label
+                elif hasattr(value, "name"):
+                    return value.name
+        return self.format_value
+    def get_steps(self):
+        if type(self.range) is dict or type(self.range) is list:
+            return len(self.range)-1
+        elif type(self.range) is bool:
+            return 1
+        else:
+            return 20
+    def get_step_size(self):
+        return 1.0/self.get_steps()
+    def increment(self):
+        return self.set(self.raw_value + self.get_step_size())
+    def decrement(self):
+        return self.set(self.raw_value - self.get_step_size())
 
-    if type(value) == type(1.0):
-        value = max(min(value, 1.0), 0.0)
+class ParameterGroup:
+    def __init__(self, name="", label=""):
+        self.name = name
+        self.label = label
+        self.items = []
+    def append(self, item):
+        self.items.append(item)
 
-    param_voices = None
-    if index:
-        param_voices = [voices[index]]
-    else:
-        param_voices = voices
+class Parameters:
+    def __init__(self):
+        self.mod_parameter = 0
+        self.mod_parameters = []
 
-    if name == "midi_channel":
-        value = round(map_value(value, MIDI_CHANNEL_MIN, MIDI_CHANNEL_MAX))
-        uart_midi.in_channel = value-1
-        uart_midi.out_channel = value-1
-        usb_midi_driver.in_channel = value-1
-        usb_midi_driver.out_channel = value-1
-        if ble and ble_midi:
-            ble_midi.in_channel = value-1
-            ble_midi.out_channel = value-1
-    elif name == "midi_thru":
-        global midi_thru
-        midi_thru = map_boolean(value)
+        self.items = [
 
-    elif name == "volume":
-        mixer.voice[0].level = value
-    elif name == "portamento":
-        pass
-    elif name == "keyboard_type":
-        keyboard.type = map_array(value, note_types)
-    elif name == "velocity_amount":
-        for voice in param_voices:
-            voice.velocity_amount = value
-    elif name == "bend_amount":
-        for voice in param_voices:
-            voice.set_bend_amount(value, update)
-    elif name == "mod_parameter":
-        global mod_parameter
-        mod_parameter = map_array(value, mod_parameters)
+            # Global
+            Parameter(
+                name="midi_channel",
+                label="MIDI Channel",
+                group="global",
+                range=(MIDI_CHANNEL_MIN, MIDI_CHANNEL_MAX),
+                set_callback=self.set_midi_channel,
+                mod=False,
+                patch=False
+            ),
+            Parameter(
+                name="midi_thru",
+                label="MIDI Thru",
+                group="global",
+                range=True,
+                set_callback=self.set_midi_thru,
+                mod=False,
+                patch=False
+            ),
+            Parameter(
+                name="volume",
+                label="Volume",
+                group="global",
+                value=1.0,
+                object=mixer.voice[0],
+                property="level"
+            ),
+            Parameter(
+                name="glide",
+                label="Glide",
+                group="global",
+                range=(GLIDE_MIN,GLIDE_MAX),
+                set_callback=voice.set_glide,
+                patch=False
+            ),
+            Parameter(
+                name="keyboard_type",
+                label="Note Type",
+                group="global",
+                range=note_types,
+                object=keyboard,
+                property="type"
+            ),
+            Parameter(
+                name="velocity_amount",
+                label="Velocity Amount",
+                group="global",
+                set_callback=voice.set_velocity_amount
+            ),
+            Parameter(
+                name="bend_amount",
+                label="Bend Amount",
+                group="global",
+                range=BEND_AMOUNT,
+                value=1.0,
+                set_callback=voice.set_pitch_bend_amount,
+                patch=False
+            ),
+            Parameter(
+                name="mod_parameter",
+                label="Mod Wheel",
+                group="global",
+                range=self.mod_parameters,
+                object=self,
+                property="mod_parameter"
+            ),
 
-    # TODO: Global filter
-    elif name == "filter_type":
-        for voice in param_voices:
-            voice.set_filter_type(value, update)
-    elif name == "filter_frequency":
-        for voice in param_voices:
-            voice.set_filter_frequency(value, update)
-    elif name == "filter_resonance":
-        for voice in param_voices:
-            voice.set_filter_resonance(value, update)
+            # Voice
+            Parameter(
+                name="waveform",
+                label="Waveform",
+                group="voice",
+                range=waveforms,
+                set_callback=voice.set_waveform
+            ),
+            Parameter(
+                name="filter_type",
+                label="Filter",
+                group="voice",
+                range=filter_types,
+                set_callback=voice.set_filter_type
+            ),
+            Parameter(
+                name="filter_frequency",
+                label="Frequency",
+                group="voice",
+                range=(FILTER_FREQ_MIN,FILTER_FREQ_MAX),
+                value=1.0,
+                set_callback=voice.set_filter_frequency
+            ),
+            Parameter(
+                name="filter_resonance",
+                label="Resonace",
+                group="voice",
+                range=(FILTER_RES_MIN, FILTER_RES_MAX),
+                set_callback=voice.set_filter_resonance
+            ),
+            Parameter(
+                name="pan",
+                label="Pan",
+                group="voice",
+                range=1.0,
+                value=0.5,
+                set_callback=voice.set_pan,
+                patch=False
+            ),
+            Parameter(
+                name="attack_time",
+                label="Attack Time",
+                group="voice",
+                range=(ENVELOPE_TIME_MIN,ENVELOPE_TIME_MAX),
+                set_callback=voice.set_envelope_attack_time
+            ),
+            Parameter(
+                name="decay_time",
+                label="Decay Time",
+                group="voice",
+                range=(ENVELOPE_TIME_MIN,ENVELOPE_TIME_MAX),
+                set_callback=voice.set_envelope_decay_time
+            ),
+            Parameter(
+                name="release_time",
+                label="Release Time",
+                group="voice",
+                range=(ENVELOPE_TIME_MIN,ENVELOPE_TIME_MAX),
+                set_callback=voice.set_envelope_release_time
+            ),
+            Parameter(
+                name="attack_level",
+                label="Attack Level",
+                group="voice",
+                value=1.0,
+                set_callback=voice.set_envelope_attack_level
+            ),
+            Parameter(
+                name="sustain_level",
+                label="Sustain Level",
+                group="voice",
+                value=1.0,
+                set_callback=voice.set_envelope_sustain_level
+            ),
 
-    elif name == "waveform":
-        for voice in param_voices:
-            voice.set_waveform(value, update)
-    elif name == "level":
-        for voice in param_voices:
-            voice.note.amplitude.offset = value
-    elif name == "coarse_tune":
-        for voice in param_voices:
-            voice.set_coarse_tune(value, update)
-    elif name == "fine_tune":
-        for voice in param_voices:
-            voice.set_fine_tune(value, update)
+            # Oscillator 1
+            Parameter(
+                name="glide_0",
+                label="Glide",
+                group="osc0",
+                range=(GLIDE_MIN,GLIDE_MAX),
+                set_callback=voice.oscillators[0].set_glide
+            ),
+            Parameter(
+                name="bend_amount_0",
+                label="Bend Amount",
+                group="osc0",
+                range=BEND_AMOUNT,
+                value=1.0,
+                set_callback=voice.oscillators[0].set_pitch_bend_amount
+            ),
+            Parameter(
+                name="waveform_0",
+                label="Waveform",
+                group="osc0",
+                range=waveforms,
+                set_callback=voice.oscillators[0].set_waveform
+            ),
+            Parameter(
+                name="level_0",
+                label="Level",
+                group="osc0",
+                value=1.0,
+                set_callback=voice.oscillators[0].set_level
+            ),
+            Parameter(
+                name="coarse_tune_0",
+                label="Coarse Tune",
+                group="osc0",
+                range=COARSE_TUNE,
+                value=0.5,
+                set_callback=voice.oscillators[0].set_coarse_tune
+            ),
+            Parameter(
+                name="fine_tune_0",
+                label="Fine Tune",
+                group="osc0",
+                range=FINE_TUNE,
+                value=0.5,
+                set_callback=voice.oscillators[0].set_fine_tune
+            ),
+            Parameter(
+                name="tremolo_rate_0",
+                label="Tremolo Rate",
+                group="osc0",
+                set_callback=voice.oscillators[0].set_tremolo_rate
+            ),
+            Parameter(
+                name="tremolo_depth_0",
+                label="Tremolo Depth",
+                group="osc0",
+                set_callback=voice.oscillators[0].set_tremolo_depth
+            ),
+            Parameter(
+                name="vibrato_rate_0",
+                label="Vibrato Rate",
+                group="osc0",
+                set_callback=voice.oscillators[0].set_vibrato_rate
+            ),
+            Parameter(
+                name="vibrato_depth_0",
+                label="Vibrato Depth",
+                group="osc0",
+                set_callback=voice.oscillators[0].set_vibrato_depth
+            ),
+            Parameter(
+                name="pan_0",
+                label="Pan",
+                group="osc0",
+                value=0.5,
+                set_callback=voice.oscillators[0].set_pan
+            ),
+            Parameter(
+                name="pan_rate_0",
+                label="Panning Rate",
+                group="osc0",
+                set_callback=voice.oscillators[0].set_pan_rate
+            ),
+            Parameter(
+                name="pan_depth_0",
+                label="Panning Depth",
+                group="osc0",
+                set_callback=voice.oscillators[0].set_pan_depth
+            ),
 
-    elif name == "tremolo_rate":
-        for voice in param_voices:
-            voice.note.amplitude.rate = value
-    elif name == "tremolo_depth":
-        for voice in param_voices:
-            voice.note.amplitude.scale = value
+            # Oscillator 2
+            Parameter(
+                name="glide_1",
+                label="Glide",
+                group="osc1",
+                range=(GLIDE_MIN,GLIDE_MAX),
+                set_callback=voice.oscillators[1].set_glide
+            ),
+            Parameter(
+                name="bend_amount_1",
+                label="Bend Amount",
+                group="osc1",
+                range=BEND_AMOUNT,
+                value=1.0,
+                set_callback=voice.oscillators[1].set_pitch_bend_amount
+            ),
+            Parameter(
+                name="waveform_1",
+                label="Waveform",
+                group="osc1",
+                range=waveforms,
+                set_callback=voice.oscillators[1].set_waveform
+            ),
+            Parameter(
+                name="level_1",
+                label="Level",
+                group="osc1",
+                value=0.0,
+                set_callback=voice.oscillators[1].set_level
+            ),
+            Parameter(
+                name="coarse_tune_1",
+                label="Coarse Tune",
+                group="osc1",
+                range=COARSE_TUNE,
+                value=0.5,
+                set_callback=voice.oscillators[1].set_coarse_tune
+            ),
+            Parameter(
+                name="fine_tune_1",
+                label="Fine Tune",
+                group="osc1",
+                range=FINE_TUNE,
+                value=0.5,
+                set_callback=voice.oscillators[1].set_fine_tune
+            ),
+            Parameter(
+                name="tremolo_rate_1",
+                label="Tremolo Rate",
+                group="osc1",
+                set_callback=voice.oscillators[1].set_tremolo_rate
+            ),
+            Parameter(
+                name="tremolo_depth_1",
+                label="Tremolo Depth",
+                group="osc1",
+                set_callback=voice.oscillators[1].set_tremolo_depth
+            ),
+            Parameter(
+                name="vibrato_rate_1",
+                label="Vibrato Rate",
+                group="osc1",
+                set_callback=voice.oscillators[1].set_vibrato_rate
+            ),
+            Parameter(
+                name="vibrato_depth_1",
+                label="Vibrato Depth",
+                group="osc1",
+                set_callback=voice.oscillators[1].set_vibrato_depth
+            ),
+            Parameter(
+                name="pan_1",
+                label="Pan",
+                group="osc1",
+                value=0.5,
+                set_callback=voice.oscillators[1].set_pan
+            ),
+            Parameter(
+                name="pan_rate_1",
+                label="Panning Rate",
+                group="osc1",
+                set_callback=voice.oscillators[1].set_pan_rate
+            ),
+            Parameter(
+                name="pan_depth_1",
+                label="Panning Depth",
+                group="osc1",
+                set_callback=voice.oscillators[1].set_pan_depth
+            )
 
-    elif name == "vibrato_rate":
-        for voice in param_voices:
-            voice.note.bend.rate = value
-    elif name == "vibrato_depth":
-        for voice in param_voices:
-            voice.note.bend.scale = value
+        ]
 
-    elif name == "pan_rate":
-        for voice in param_voices:
-            voice.note.panning.rate = value
-    elif name == "pan_depth":
-        for voice in param_voices:
-            voice.note.panning.scale = value
-    elif name == "pan":
-        for voice in param_voices:
-            voice.note.panning.offset = map_value(value, -1.0, 1.0)
+        self.groups = [
+            ParameterGroup("global", "Global"),
+            ParameterGroup("voice", "Voice"),
+            ParameterGroup("osc0", "Osc 1"),
+            ParameterGroup("osc1", "Osc 2"),
+        ]
 
-    elif name == "attack_time":
-        for voice in param_voices:
-            voice.set_envelope_attack_time(value, update)
-    elif name == "decay_time":
-        for voice in param_voices:
-            voice.set_envelope_decay_time(value, update)
-    elif name == "release_time":
-        for voice in param_voices:
-            voice.set_envelope_release_time(value, update)
-    elif name == "attack_level":
-        for voice in param_voices:
-            voice.set_envelope_attack_level(value, update)
-    elif name == "sustain_level":
-        for voice in param_voices:
-            voice.set_envelope_sustain_level(value, update)
+        for parameter in self.items:
+            if parameter.mod:
+                self.mod_parameters.append(parameter.name)
+            self.get_group(parameter.group).append(parameter)
 
-    return True
-
-def get_parameter(name, format=False, translate=True):
-    if not name in parameters:
+    def get_group(self, name):
+        for group in self.groups:
+            if group.name == name:
+                return group
+        return None
+    def get_parameter(self, name):
+        for parameter in self.items:
+            if parameter.name == name:
+                return parameter
         return None
 
-    index = name[-1]
-    if index.isdigit():
-        index = int(index)
-        name = name[:len(name)-2]
-        if index >= len(voices):
-            return None
-    else:
-        index = 0
-    param_voice = voices[index]
-
-    if name == "midi_channel":
-        if format:
-            return uart_midi.in_channel+1
-        else:
-            return unmap_value(uart_midi.in_channel+1, MIDI_CHANNEL_MIN, MIDI_CHANNEL_MAX)
-    elif name == "midi_thru":
+    def set_midi_channel(self, value):
+        uart_midi.in_channel = value
+        uart_midi.out_channel = value
+        usb_midi_driver.in_channel = value
+        usb_midi_driver.out_channel = value
+        if ble and ble_midi:
+            ble_midi.in_channel = value
+            ble_midi.out_channel = value
+    def set_midi_thru(self, value):
         global midi_thru
-        if format:
-            return midi_thru
-        else:
-            return unmap_boolean(midi_thru)
+        midi_thru = value
+    def get_mod_parameter(self):
+        if not self.mod_parameters:
+            return "volume"
+        return self.mod_parameters[self.mod_parameter]
 
-    elif name == "volume":
-        return mixer.voice[0].level
-    elif name == "portamento":
-        return None # NOTE: Not implemented
-    elif name == "keyboard_type":
-        if format or translate:
-            return keyboard.type
-        else:
-            return unmap_array(keyboard.type, note_types)
-    elif name == "velocity_amount":
-        return param_voice.velocity_amount
-    elif name == "bend_amount":
-        return param_voice.bend_amount
-    elif name == "mod_parameter":
-        global mod_parameter
-        if format or translate:
-            return mod_parameter
-        else:
-            return unmap_array(mod_parameter, mod_parameters)
+parameters = Parameters()
 
-    # TODO: Global filter
-    elif name == "filter_type":
-        if format or translate:
-            return param_voice.filter_type
-        else:
-            return unmap_array(param_voice.filter_type, filter_types)
-    elif name == "filter_frequency":
-        if format:
-            return param_voice.get_filter_frequency()
-        else:
-            return param_voice.filter_frequency
-    elif name == "filter_resonance":
-        if format:
-            return param_voice.get_filter_resonance()
-        else:
-            return param_voice.filter_resonance
-
-    elif name == "waveform":
-        if format or translate:
-            global waveforms
-            return waveforms[param_voice.waveform].get("name", param_voice.waveform)
-        else:
-            return param_voice.waveform/(len(waveforms)-1)
-    elif name == "level":
-        return param_voice.note.amplitude.offset
-    elif name == "coarse_tune":
-        # TODO: Formatting?
-        return param_voice.coarse_tune
-    elif name == "fine_tune":
-        # TODO: Formatting?
-        return param_voice.fine_tune
-
-    elif name == "tremolo_rate":
-        return param_voice.note.amplitude.rate
-    elif name == "tremolo_depth":
-        return param_voice.note.amplitude.scale
-
-    elif name == "vibrato_rate":
-        return param_voice.note.bend.rate
-    elif name == "vibrato_depth":
-        return param_voice.note.bend.scale
-
-    elif name == "pan_rate":
-        return param_voice.note.panning.rate
-    elif name == "pan_depth":
-        return param_voice.note.panning.scale
-    elif name == "pan":
-        if format:
-            return param_voice.note.panning.offset
-        else:
-            return unmap_value(param_voice.note.panning.offset, -1.0, 1.0)
-
-    elif name == "attack_time":
-        return param_voice.get_envelope_attack_time(format)
-    elif name == "decay_time":
-        return param_voice.get_envelope_decay_time(format)
-    elif name == "release_time":
-        return param_voice.get_envelope_release_time(format)
-    elif name == "attack_level":
-        return param_voice.attack_level
-    elif name == "sustain_level":
-        return param_voice.sustain_level
-
-    return None
+midi_map = read_json("/midi.json")
 
 def slugify(value):
     value = re.sub(r'[^\w\s-]', '', value.lower())
@@ -1028,13 +1350,6 @@ def list_patches():
     except:
         return []
 
-exclude_patch_parameters = [
-    "midi_channel",
-    "midi_thru",
-    "portamento",
-    "bend_amount",
-    "pan"
-]
 def get_patch_filename(index):
     if type(index) == type("") and index.isdigit():
         index = int(index)
@@ -1073,12 +1388,9 @@ def read_patch(index):
         print("Invalid Data")
         return False
     for name in data["parameters"]:
-        set_parameter(name, data["parameters"][name], False)
-    for voice in voices:
-        voice.update_waveform()
-        voice.update_filter()
-        voice.update_envelope()
-        voice.update_bend()
+        parameter = parameters.get_parameter(name)
+        if parameter:
+            parameter.set(data["parameters"][name])
     keyboard.update()
     print("Successfully Imported Patch")
     return True
@@ -1088,11 +1400,9 @@ def save_patch(index=0, name="Patch"):
         "name": name,
         "parameters": {},
     }
-    for name in parameters:
-        if not name in exclude_patch_parameters:
-            value = get_parameter(name, False, True)
-            if value:
-                data["parameters"][name] = value
+    for parameter in parameters.items:
+        if parameter.patch:
+            data["parameters"][parameter.name] = parameter.get()
     remove_patch(index)
     path = "/patches/{:02d}-{}.json".format(index, slugify(name))
     print("Saving Patch #{:d} ({}) at {}".format(index, name, path))
@@ -1100,43 +1410,45 @@ def save_patch(index=0, name="Patch"):
 def read_first_patch():
     return read_patch(0)
 
-read_first_patch()
+#read_first_patch()
 
 print("\n:: Setting Up Menu ::")
+
+class MenuItem:
+    def __init__(self, group_index=0, group=None, parameter_index=0, parameter=None):
+        self.group_index = group_index
+        self.group = group
+        self.parameter_index = parameter_index
+        self.parameter = parameter
 
 class Menu:
     def __init__(self):
         self._item = None
-        self._groups = read_json("/menu.json")
         self._selected = False
     def _get_item_by_index(self, group_index, parameter_index):
-        if not self._groups or abs(group_index) >= len(self._groups):
-            return False
-        group = self._groups[group_index]
-        parameters = group.get("parameters", [])
-        if not group or abs(parameter_index) >= len(parameters):
-            return False
-        parameter = parameters[parameter_index]
-        return {
-            "group_index": group_index % len(self._groups),
-            "group_label": group.get("name", ""),
-            "parameter_index": parameter_index % len(parameters),
-            "parameter_name": parameter.get("name", ""),
-            "parameter_label": parameter.get("label", "")
-        }
+        group_index = group_index % len(parameters.groups)
+        group = parameters.groups[group_index]
+        parameter_index = parameter_index % len(group.items)
+        parameter = group.items[parameter_index]
+        return MenuItem(group_index, group, parameter_index, parameter)
     def _get_item_by_name(self, name):
-        if not self._groups:
-            return False
-        for i in range(len(self._groups)):
-            parameters = self._groups[i].get("parameters", [])
-            for j in range(len(parameters)):
-                 if parameters[j].get("name", "") == name:
-                     return self._get_item_by_index(i, j)
-        return False
+        parameter = parameters.get_parameter(name)
+        group = parameters.get_group(parameter.group)
+        return MenuItem(self._get_group_index(group), group, self._get_parameter_index(group, parameter), parameter)
+    def _get_group_index(self, group):
+        for i in range(len(parameters.groups)):
+            if parameters.groups[i] == group:
+                return i
+        return 0
+    def _get_parameter_index(self, group, parameter):
+        for i in range(len(group.items)):
+            if group.items[i] == parameter:
+                return i
+        return 0
     def _queue(self):
         if not self._item:
             return False
-        display.queue(self._item["parameter_label"], self._item["group_label"], get_parameter(self._item["parameter_name"], True))
+        display.queue(self._item.parameter.label, self._item.group.label, self._item.parameter.get_formatted_value())
         return True
     def _queue_by_index(self, group_index, parameter_index):
         item = self._get_item_by_index(group_index, parameter_index)
@@ -1144,29 +1456,10 @@ class Menu:
             return False
         self._item = item
         return self._queue()
-    def _get_step_size(self, name):
-        if name[-1].isdigit():
-            name = name[:len(name)-2]
-        count = None # increments
-        if name == "midi_channel":
-            count = MIDI_CHANNEL_MAX-MIDI_CHANNEL_MIN
-        elif name == "midi_thru":
-            count = 1
-        elif name == "keyboard_type":
-            count = len(note_types)-1
-        elif name == "mod_parameter":
-            count = len(mod_parameters)-1
-        elif name == "filter_type":
-            count = len(filter_types)-1
-        elif name == "waveform":
-            count = len(waveforms)-1
-        if not count:
-            count = 20
-        return 1/count
     def display(self, name=None):
         if not name:
             return self._queue()
-        if not self._item or self._item["parameter_name"] != name:
+        if not self._item or self._item.parameter.name != name:
             self._item = self._get_item_by_name(name)
         return self._queue()
     def first(self):
@@ -1174,42 +1467,30 @@ class Menu:
     def last(self):
         return self._queue_by_index(-1, -1)
     def next(self):
-        if not self._groups:
-            return False
         if not self._item:
             return self.first()
-        if self._item["parameter_index"] >= len(self._groups[self._item["group_index"]].get("parameters", []))-1:
-            if self._item["group_index"] >= len(self._groups)-1:
-                return self.first()
-            return self._queue_by_index(self._item["group_index"]+1, 0)
+        if self._item.parameter_index >= len(self._item.group.items)-1:
+            return self._queue_by_index(self._item.group_index+1, 0)
         else:
-            return self._queue_by_index(self._item["group_index"], self._item["parameter_index"]+1)
+            return self._queue_by_index(self._item.group_index, self._item.parameter_index+1)
     def previous(self):
-        if not self._groups:
-            return False
         if not self._item:
             return self.last()
-        if self._item["parameter_index"] <= 0:
-            if self._item["group_index"] <= 0:
-                return self.last()
-            return self._queue_by_index(self._item["group_index"]-1, -1)
+        if self._item.parameter_index <= 0:
+            return self._queue_by_index(self._item.group_index-1, -1)
         else:
-            return self._queue_by_index(self._item["group_index"], self._item["parameter_index"]-1)
+            return self._queue_by_index(self._item.group_index, self._item.parameter_index-1)
     def increment(self):
-        if self._selected:
-            value = get_parameter(self._item["parameter_name"], False, False)
-            value = value + self._get_step_size(self._item["parameter_name"])
-            if set_parameter(self._item["parameter_name"], value):
+        if self._selected and self._item:
+            if self._item.parameter.increment():
                 return self._queue()
             else:
                 return False
         else:
             return self.next()
     def decrement(self):
-        if self._selected:
-            value = get_parameter(self._item["parameter_name"], False, False)
-            value = value - self._get_step_size(self._item["parameter_name"])
-            if set_parameter(self._item["parameter_name"], value):
+        if self._selected and self._item:
+            if self._item.parameter.decrement():
                 return self._queue()
             else:
                 return False
@@ -1245,20 +1526,20 @@ def note_off(notenum):
 def control_change(control, value):
     name = None
     if control == 1: # Mod Wheel
-        global mod_parameter
-        name = mod_parameter
+        name = parameters.get_mod_parameter()
     elif control == 64: # Sustain
         keyboard.set_sustain(value)
     else:
         name = midi_map.get(str(control), None)
     if name:
-        set_parameter(name, value)
-        if control != 1:
-            menu.display(name)
+        parameter = parameters.get_parameter(name)
+        if parameter:
+            parameter.set(value)
+            if control != 1:
+                menu.display(name)
 
 def pitch_bend(value):
-    for voice in voices:
-        voice.set_bend(value)
+    voice.set_pitch_bend(value)
 
 if ble and ble_advertisement:
     ble.start_advertising(ble_advertisement)
