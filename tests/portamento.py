@@ -3,7 +3,7 @@
 # GPL v3 License
 
 import board, time
-import random
+import random, math
 from audiobusio import I2SOut
 from audiomixer import Mixer
 import synthio
@@ -18,8 +18,8 @@ BUFFER_SIZE         = 256
 LEVEL               = 0.5
 
 NOTE_ROOT           = 60 # C4
-NOTE_RANGE          = 12
-NOTE_SPEED          = 1.0
+NOTE_RANGE          = 24
+NOTE_SPEED          = 0.5
 NOTE_UPDATE         = 2.0
 
 WAVE_SAMPLES        = 256
@@ -51,7 +51,7 @@ mixer.voice[0].play(synth)
 # Single shot LFO to control interpolation between frequency
 lerp_position = synthio.LFO(
     waveform=numpy.linspace(-16385, 16385, num=2, dtype=numpy.int16),
-    rate=NOTE_SPEED,
+    rate=1/NOTE_SPEED,
     scale=1.0,
     offset=0.5,
     once=True
@@ -91,8 +91,8 @@ while True:
     # Generate a random note within the designated range
     frequency = synthio.midi_to_hz(NOTE_ROOT+round(NOTE_RANGE*(random.random()*2-1)))
 
-    # Set the desired end point relative to the root frequency
-    lerp.b = frequency / note.frequency - 1.0
+    # Set the desired end point as a relative octave of the root frequency using logarithmic functions
+    lerp.b = math.log(frequency / note.frequency) / math.log(2)
 
     # Reset the position of the interpolation operation
     lerp_position.retrigger()
