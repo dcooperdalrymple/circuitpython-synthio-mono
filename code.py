@@ -103,96 +103,120 @@ print("\n:: Initializing Display ::")
 
 class Display:
     def __init__(self):
-        self.i2c = I2C(
-            scl=DISPLAY_I2C_SCL,
-            sda=DISPLAY_I2C_SDA,
-            frequency=DISPLAY_I2C_SPEED
+        self._queued = None
+    def set_title(self, text):
+        pass
+    def set_group(self, text):
+        pass
+    def set_value(self, text):
+        pass
+    def queue(self, title, group, value):
+        self._queued = (title, group, value)
+    def update(self):
+        if self._queued:
+            self.set_title(self._queued[0])
+            self.set_group(self._queued[1])
+            self.set_value(self._queued[2])
+            self._queued = None
+    def set_selected(self, value):
+        pass
+
+class DisplaySSD1306(Display):
+    def __init__(self, scl=DISPLAY_I2C_SCL, sda=DISPLAY_I2C_SDA, speed=DISPLAY_I2C_SPEED, address=DISPLAY_ADDRESS, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT):
+        self._width = width
+        self._height = height
+
+        self._i2c = I2C(
+            scl=scl,
+            sda=sda,
+            frequency=speed
         )
-        self.bus = displayio.I2CDisplay(
-            self.i2c,
-            device_address=DISPLAY_ADDRESS
+        self._bus = displayio.I2CDisplay(
+            self._i2c,
+            device_address=address
         )
-        self.driver = adafruit_displayio_ssd1306.SSD1306(
-            self.bus,
-            width=DISPLAY_WIDTH,
-            height=DISPLAY_HEIGHT
+        self._driver = adafruit_displayio_ssd1306.SSD1306(
+            self._bus,
+            width=self._width,
+            height=self._height
         )
 
-        self.group = displayio.Group()
-        self.driver.show(self.group)
+        self._group = displayio.Group()
+        self._driver.show(self._group)
 
-        self.bg_bitmap = displayio.Bitmap(DISPLAY_WIDTH, DISPLAY_HEIGHT, 1)
-        self.bg_palette = displayio.Palette(1)
-        self.bg_palette[0] = 0x000000
-        self.bg_sprite = displayio.TileGrid(
-            self.bg_bitmap,
-            pixel_shader=self.bg_palette,
+        self._bg_bitmap = displayio.Bitmap(self._width, self._height, 1)
+        self._bg_palette = displayio.Palette(1)
+        self._bg_palette[0] = 0x000000
+        self._bg_sprite = displayio.TileGrid(
+            self._bg_bitmap,
+            pixel_shader=self._bg_palette,
             x=0,
             y=0
         )
-        self.group.append(self.bg_sprite)
+        self._group.append(self._bg_sprite)
 
-        self.title_label = label.Label(
+        self._title_label = label.Label(
             terminalio.FONT,
             text="",
             color=0xFFFFFF,
-            background_color=None,
-            anchor_point=(0.0,0.5),
-            anchored_position=(0,DISPLAY_HEIGHT//4)
+            background_color=None
         )
-        self.group.append(self.title_label)
+        self._group.append(self._title_label)
 
-        self.group_label = label.Label(
+        self._group_label = label.Label(
             terminalio.FONT,
             text="",
             color=0x000000,
-            background_color=0xFFFFFF,
-            anchor_point=(1.0,0.5),
-            anchored_position=(DISPLAY_WIDTH,DISPLAY_HEIGHT//4)
+            background_color=0xFFFFFF
         )
-        self.group.append(self.group_label)
+        self._group.append(self._group_label)
 
-        self.value_label = label.Label(
+        self._value_label = label.Label(
             terminalio.FONT,
             text="",
             color=0xFFFFFF,
-            background_color=None,
-            anchor_point=(0.0,0.5),
-            anchored_position=(0,DISPLAY_HEIGHT//4*3)
+            background_color=None
         )
-        self.group.append(self.value_label)
+        self._group.append(self._value_label)
 
-        self.queued = None
-
+        super().__init__()
     def set_title(self, text):
-        self.title_label.text = str(text)
-
+        self._title_label.text = str(text)
     def set_group(self, text):
-        self.group_label.text = str(text)
-
+        self._group_label.text = str(text)
     def set_value(self, text):
         if type(text) == type(0.5):
             text = "{:.2f}".format(text)
-        self.value_label.text = str(text)
-
-    def queue(self, title, group, value):
-        self.queued = (title, group, value)
-    def update(self):
-        if self.queued:
-            self.set_title(self.queued[0])
-            self.set_group(self.queued[1])
-            self.set_value(self.queued[2])
-            self.queued = None
-
+        self._value_label.text = str(text)
     def set_selected(self, value):
         if value:
-            self.title_label.color = 0x000000
-            self.title_label.background_color = 0xFFFFFF
+            self._title_label.color = 0x000000
+            self._title_label.background_color = 0xFFFFFF
         else:
-            self.title_label.color = 0xFFFFFF
-            self.title_label.background_color = 0x000000
+            self._title_label.color = 0xFFFFFF
+            self._title_label.background_color = 0x000000
 
-display = Display()
+class DisplaySSD1306_128x32(DisplaySSD1306):
+    def __init__(self, scl=DISPLAY_I2C_SCL, sda=DISPLAY_I2C_SDA, speed=DISPLAY_I2C_SPEED, address=DISPLAY_ADDRESS):
+        super().__init__(scl, sda, speed, address, 128, 32)
+        self._title_label.anchor_point = (0.0,0.5)
+        self._title_label.anchored_position = (0,self._height//4)
+        self._group_label.anchor_point = (1.0,0.5)
+        self._group_label.anchored_position = (self._width,self._height//4)
+        self._value_label.anchor_point = (0.0,0.5)
+        self._value_label.anchored_position = (0,self._height//4*3)
+
+class DisplaySSD1306_128x64(DisplaySSD1306):
+    def __init__(self, scl=DISPLAY_I2C_SCL, sda=DISPLAY_I2C_SDA, speed=DISPLAY_I2C_SPEED, address=DISPLAY_ADDRESS):
+        super().__init__(scl, sda, speed, address, 128, 64)
+        self._group_label.anchor_point = (0.5,0.5)
+        self._group_label.anchored_position = (self._width//2,self._height//8)
+        self._title_label.anchor_point = (0.5,0.5)
+        self._title_label.anchored_position = (self._width//2,self._height//8*3)
+        self._value_label.anchor_point = (0.5,0.5)
+        self._value_label.anchored_position = (self._width//2,self.height//4*3)
+
+display = DisplaySSD1306_128x32()
 display.set_title("circuitpython-synthio-mono v1.0")
 display.set_value("Loading...")
 
