@@ -439,7 +439,7 @@ def control_change(control, value):
     elif control == 64: # Sustain
         keyboard.set_sustain(value)
     else:
-        name = midi_map.get(str(control), None)
+        name = midi.get_control_parameter(control)
     if name:
         parameter = parameters.get_parameter(name)
         if parameter:
