@@ -1,3 +1,5 @@
 fp-info-cache
 *.bak
 *.FCStd1
+lib/synthio_mono.py
+lib/synthio_mono.mpy

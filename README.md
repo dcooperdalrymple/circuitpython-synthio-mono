@@ -25,18 +25,12 @@ Parametric monophonic synthesizer built using CircuitPython's synthio module usi
 * SSD1306 128x32 OLED display
 * KY-040 rotary encoder (or other rotary encoder with momentary switch)
 
-## Software Installation
+## Software Compilation and Device Upload
 
-### Automatic (Linux)
-
-1. Download and install CircuitPython bootloader: [instructions & UF2 file](https://circuitpython.org/board/raspberry_pi_pico/).
-2. Ensure that your device is connected and mounted as CIRCUITPYTHON and run the provided Makefile: `make upload --always-make`.
-
-### Manual
+### Linux
 
 1. Download and install CircuitPython bootloader: [instructions & UF2 file](https://circuitpython.org/board/raspberry_pi_pico/).
-2. Add all provided libraries in `/lib/` to CircuitPython internal storage.
-3. Copy `boot.py`, `code.py`, and `midi.json` into the CircuitPython device's root directory.
+2. Ensure that your device is connected and mounted as CIRCUITPYTHON and run the provided Makefile: `make` (the `--always-make` argument may be necessary to ensure that all files are forcibly uploaded to the device).
 
 ## Hardware Installation
 
