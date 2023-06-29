@@ -24,66 +24,10 @@ from adafruit_midi.control_change import ControlChange
 from adafruit_midi.program_change import ProgramChange
 from adafruit_midi.pitch_bend import PitchBend
 
-from audiobusio import I2SOut
 from audiomixer import Mixer
-
-from busio import I2C
-import displayio, adafruit_displayio_ssd1306, terminalio
-from adafruit_display_text import label
 
 import synthio
 import ulab.numpy as numpy
-
-# Program Constants
-
-MAP_THRESHOLD       = 0.0
-
-MIDI_CHANNEL_MAX    = 15
-MIDI_CHANNEL_MIN    = 0
-MIDI_TX             = board.GP4
-MIDI_RX             = board.GP5
-MIDI_UPDATE         = 0.05
-
-I2S_CLK             = board.GP0
-I2S_WS              = board.GP1
-I2S_DATA            = board.GP2
-
-DISPLAY_ADDRESS     = 0x3c
-DISPLAY_WIDTH       = 128
-DISPLAY_HEIGHT      = 32
-DISPLAY_I2C_SCL     = board.GP21
-DISPLAY_I2C_SDA     = board.GP20
-DISPLAY_I2C_SPEED   = 1000000 # 1Mhz (Fast Mode Plus), 400kHz (Fast Mode) or 100kHz (Standard Mode)
-DISPLAY_UPDATE      = 0.2
-
-ENCODER_A           = board.GP12
-ENCODER_B           = board.GP13
-ENCODER_BTN         = board.GP7
-ENCODER_UPDATE      = 0.1
-
-SAMPLE_RATE         = 22050
-BUFFER_SIZE         = 4096
-
-WAVE_SAMPLES        = 256
-WAVE_AMPLITUDE      = 12000 # out of 16384
-
-COARSE_TUNE         = 2.0
-FINE_TUNE           = 1.0/12.0
-BEND_AMOUNT         = 1.0
-
-FILTER_FREQ_MAX     = min(SAMPLE_RATE*0.45, 20000.0)
-FILTER_FREQ_MIN     = 60.0
-FILTER_RES_MAX      = 16.0
-FILTER_RES_MIN      = 0.25
-
-ENVELOPE_TIME_MAX   = 2.0
-ENVELOPE_TIME_MIN   = 0.05
-
-GLIDE_MAX           = 2.0
-GLIDE_MIN           = 0.05
-
-# Release REPL
-displayio.release_displays()
 
 # Initialize status LED
 led = DigitalInOut(board.LED)
@@ -98,6 +42,47 @@ print("circuitpython-synthio-mono")
 print("Version 1.0")
 print("Cooper Dalrymple, 2023")
 print("https://dcdalrymple.com/circuitpython-synthio-mono/")
+
+def read_json(path):
+    try:
+        with open(path, "r") as file:
+            data = json.load(file)
+    except:
+        print("Failed to read JSON file: {}".format(path))
+        return None
+    print("Successfully read JSON file: {}".format(path))
+    return data
+def save_json(path, data):
+    if not data:
+        return False
+    try:
+        with open(path, "w") as file:
+            json.dump(data, file)
+    except:
+        print("Failed to write JSON file: {}".format(path))
+        return False
+    print("Successfully written JSON file: {}".format(path))
+    return True
+
+class Config:
+    def __init__(self, path="/config.json"):
+        self._data = read_json(path)
+    def get(self, property, default=None):
+        if type(property) is str:
+            return self._data.get(property, default)
+        elif type(property) is tuple:
+            parent = self._data
+            for i in range(len(property)-1):
+                parent = parent.get(property[i], None)
+                if parent is None:
+                    return default
+            return parent.get(property[-1], default)
+        else:
+            return default
+    def gpio(self, property, default=None):
+        return getattr(board, self.get(property, default), None)
+
+config=Config()
 
 print("\n:: Initializing Display ::")
 
@@ -122,7 +107,14 @@ class Display:
         pass
 
 class DisplaySSD1306(Display):
-    def __init__(self, scl=DISPLAY_I2C_SCL, sda=DISPLAY_I2C_SDA, speed=DISPLAY_I2C_SPEED, address=DISPLAY_ADDRESS, width=DISPLAY_WIDTH, height=DISPLAY_HEIGHT):
+    def __init__(self, scl, sda, speed, address, width, height):
+        from busio import I2C
+        import displayio, adafruit_displayio_ssd1306, terminalio
+        from adafruit_display_text import label
+
+        # Release REPL
+        displayio.release_displays()
+
         self._width = width
         self._height = height
 
@@ -197,7 +189,7 @@ class DisplaySSD1306(Display):
             self._title_label.background_color = 0x000000
 
 class DisplaySSD1306_128x32(DisplaySSD1306):
-    def __init__(self, scl=DISPLAY_I2C_SCL, sda=DISPLAY_I2C_SDA, speed=DISPLAY_I2C_SPEED, address=DISPLAY_ADDRESS):
+    def __init__(self, scl, sda, speed, address):
         super().__init__(scl, sda, speed, address, 128, 32)
         self._title_label.anchor_point = (0.0,0.5)
         self._title_label.anchored_position = (0,self._height//4)
@@ -207,7 +199,7 @@ class DisplaySSD1306_128x32(DisplaySSD1306):
         self._value_label.anchored_position = (0,self._height//4*3)
 
 class DisplaySSD1306_128x64(DisplaySSD1306):
-    def __init__(self, scl=DISPLAY_I2C_SCL, sda=DISPLAY_I2C_SDA, speed=DISPLAY_I2C_SPEED, address=DISPLAY_ADDRESS):
+    def __init__(self, scl, sda, speed, address):
         super().__init__(scl, sda, speed, address, 128, 64)
         self._group_label.anchor_point = (0.5,0.5)
         self._group_label.anchored_position = (self._width//2,self._height//8)
@@ -216,7 +208,25 @@ class DisplaySSD1306_128x64(DisplaySSD1306):
         self._value_label.anchor_point = (0.5,0.5)
         self._value_label.anchored_position = (self._width//2,self.height//4*3)
 
-display = DisplaySSD1306_128x32()
+display_type = config.get(("display", "type"), "ssd1306_128x32")
+display = None
+if display_type == "ssd1306_128x32":
+    display = DisplaySSD1306_128x32(
+        scl=config.gpio(("display", "scl"), "GP21"),
+        sda=config.gpio(("display", "sda"), "GP20"),
+        speed=config.get(("display", "speed"), 1000000),
+        address=config.get(("display", "address"), 0x3c)
+    )
+elif display_type == "ssd1306_128x64":
+    display = DisplaySSD1306_128x64(
+        scl=config.gpio(("display", "scl"), "GP21"),
+        sda=config.gpio(("display", "sda"), "GP20"),
+        speed=config.get(("display", "speed"), 1000000),
+        address=config.get(("display", "address"), 0x3c)
+    )
+if display is None:
+    display = Display() # Dummy display
+
 display.set_title("circuitpython-synthio-mono v1.0")
 display.set_value("Loading...")
 
@@ -262,14 +272,18 @@ class Encoder:
             self._release()
     def deinit(self):
         self._encoder.deinit()
-encoder = Encoder(ENCODER_A, ENCODER_B, ENCODER_BTN)
+encoder = Encoder(
+    pin_a=config.gpio(("encoder", "a"), "GP12"),
+    pin_b=config.gpio(("encoder", "b"), "GP13"),
+    pin_button=config.gpio(("encoder", "btn"), "GP7")
+)
 
 print("\n:: Initializing Midi ::")
 
 print("UART")
 uart = UART(
-    tx=MIDI_TX,
-    rx=MIDI_RX,
+    tx=config.gpio(("midi", "uart_tx")),
+    rx=config.gpio(("midi", "uart_rx")),
     baudrate=31250,
     timeout=0.001
 )
@@ -315,18 +329,31 @@ except:
 
 print("\n:: Initializing Audio ::")
 
-print("I2S Audio Output")
-audio = I2SOut(I2S_CLK, I2S_WS, I2S_DATA)
+if config.get(("audio", "type"), "i2s"):
+    print("I2S Audio Output")
+    from audiobusio import I2SOut
+    audio = I2SOut(
+        bit_clock=config.gpio(("audio", "clk"), "GP0"),
+        word_select=config.gpio(("audio", "ws"), "GP1"),
+        data=config.gpio(("audio", "data"), "GP2")
+    )
+else:
+    print("PWM Audio Output")
+    from audiopwmio import PWMAudioOut
+    audio = PWMAudioOut(
+        left_channel=config.gpio(("audio", "pwm_left"), "GP0"),
+        right_channel=config.gpio(("audio", "pwm_right"), "GP1")
+    )
 
 print("Audio Mixer")
 midi_thru = False
 mixer = Mixer(
     voice_count=1,
-    sample_rate=SAMPLE_RATE,
+    sample_rate=config.get(("audio", "rate"), 22050),
     channel_count=2,
     bits_per_sample=16,
     samples_signed=True,
-    buffer_size=BUFFER_SIZE
+    buffer_size=config.get(("audio", "buffer"), 1024),
 )
 audio.play(mixer)
 
@@ -334,26 +361,28 @@ print("\n:: Initializing Synthio ::")
 
 print("Building Waveforms")
 
+waveform_samples = config.get(("waveform", "samples"), 256)
+waveform_amplitude = config.get(("waveform", "amplitude"), 12000)
 waveforms = [
     {
         "name": "saw",
-        "data": numpy.linspace(WAVE_AMPLITUDE, -WAVE_AMPLITUDE, num=WAVE_SAMPLES, dtype=numpy.int16)
+        "data": numpy.linspace(waveform_amplitude, -waveform_amplitude, num=waveform_samples, dtype=numpy.int16)
     },
     {
         "name": "reverse_saw",
-        "data": numpy.array(numpy.flip(numpy.linspace(WAVE_AMPLITUDE, -WAVE_AMPLITUDE, num=WAVE_SAMPLES, dtype=numpy.int16)), dtype=numpy.int16)
+        "data": numpy.array(numpy.flip(numpy.linspace(waveform_amplitude, -waveform_amplitude, num=waveform_samples, dtype=numpy.int16)), dtype=numpy.int16)
     },
     {
         "name": "square",
-        "data": numpy.concatenate((numpy.ones(WAVE_SAMPLES//2, dtype=numpy.int16)*WAVE_AMPLITUDE,numpy.ones(WAVE_SAMPLES//2, dtype=numpy.int16)*-WAVE_AMPLITUDE))
+        "data": numpy.concatenate((numpy.ones(waveform_samples//2, dtype=numpy.int16)*waveform_amplitude,numpy.ones(waveform_samples//2, dtype=numpy.int16)*-waveform_amplitude))
     },
     {
         "name": "sine",
-        "data": numpy.array(numpy.sin(numpy.linspace(0, 4*numpy.pi, WAVE_SAMPLES, endpoint=False)) * WAVE_AMPLITUDE, dtype=numpy.int16)
+        "data": numpy.array(numpy.sin(numpy.linspace(0, 4*numpy.pi, waveform_samples, endpoint=False)) * waveform_amplitude, dtype=numpy.int16)
     },
     {
         "name": "noise",
-        "data": numpy.array([random.randint(-WAVE_AMPLITUDE, WAVE_AMPLITUDE) for i in range(WAVE_SAMPLES)], dtype=numpy.int16)
+        "data": numpy.array([random.randint(-waveform_amplitude, waveform_amplitude) for i in range(waveform_samples)], dtype=numpy.int16)
     }
 ]
 
@@ -373,17 +402,19 @@ def get_waveform_by_name(name, index=False):
         return None
 
 def read_waveform(filename):
+    global waveform_samples
+    global waveform_amplitude
     with adafruit_wave.open("/waveforms/"+filename) as w:
         if w.getsampwidth() != 2 or w.getnchannels() != 1:
             print("Failed to read {}: unsupported format".format(filename))
             return None
         # Read into numpy array, resize (with linear interpolation) into designated buffer size, and normalize
         data = numpy.frombuffer(w.readframes(w.getnframes()), dtype=numpy.int16)
-        data = numpy.array(numpy.interp(numpy.linspace(0,1,WAVE_SAMPLES), numpy.linspace(0,1,data.size), data), dtype=numpy.int16)
+        data = numpy.array(numpy.interp(numpy.linspace(0,1,waveform_samples), numpy.linspace(0,1,data.size), data), dtype=numpy.int16)
         norm = max(numpy.max(data), abs(numpy.min(data)))
         if not norm:
             return data
-        return numpy.array(data*(WAVE_AMPLITUDE/norm), dtype=numpy.int16)
+        return numpy.array(data*(waveform_amplitude/norm), dtype=numpy.int16)
     return None
 def valid_waveform_filename(filename):
     return len(filename) > len("a.wav") and filename[-4:] == ".wav"
@@ -408,7 +439,7 @@ if waveform_files:
 
 print("Generating Synth")
 synth = synthio.Synthesizer(
-    sample_rate=SAMPLE_RATE,
+    sample_rate=mixer.sample_rate,
     channel_count=2
 )
 mixer.voice[0].play(synth)
@@ -426,7 +457,7 @@ def map_value(value, min_value, max_value):
 def unmap_value(value, min_value, max_value):
     return (min(max(value, min_value), max_value) - min_value) / (max_value - min_value)
 
-def map_value_centered(value, min_value, center_value, max_value, threshold=MAP_THRESHOLD):
+def map_value_centered(value, min_value, center_value, max_value, threshold=0.0):
     if value > 0.5 + threshold:
         if threshold > 0.0:
             value = (value-(0.5+threshold))*(1/(0.5-threshold))
@@ -437,7 +468,7 @@ def map_value_centered(value, min_value, center_value, max_value, threshold=MAP_
         return map_value(value, min_value, center_value)
     else:
         return center_value
-def unmap_value_centered(value, min_value, center_value, max_value, threshold=MAP_THRESHOLD):
+def unmap_value_centered(value, min_value, center_value, max_value, threshold=0.0):
     if value > center_value:
         value = unmap_value(value, center_value, max_value)
         if threshold > 0.0:
@@ -490,7 +521,7 @@ def unmap_dict(value, dict):
     return unmap_array(value, list(dict))
 
 class LerpBlockInput:
-    def __init__(self, rate=1.0, value=0.0):
+    def __init__(self, rate=0.05, value=0.0):
         self.position = synthio.LFO(
             waveform=numpy.linspace(-16385, 16385, num=2, dtype=numpy.int16),
             rate=1/rate,
@@ -529,7 +560,7 @@ class Oscillator:
             scale=0.0,
             offset=0.0
         )
-        self.pitch_bend_lerp = LerpBlockInput(rate=GLIDE_MIN)
+        self.pitch_bend_lerp = LerpBlockInput()
         self.note = synthio.Note(
             waveform=None,
             frequency=root,
@@ -870,27 +901,6 @@ keyboard = Keyboard()
 
 print("\n:: Reading Configuration ::")
 
-def read_json(path):
-    try:
-        with open(path, "r") as file:
-            data = json.load(file)
-    except:
-        print("Failed to read JSON file: {}".format(path))
-        return None
-    print("Successfully read JSON file: {}".format(path))
-    return data
-def save_json(path, data):
-    if not data:
-        return False
-    try:
-        with open(path, "w") as file:
-            json.dump(data, file)
-    except:
-        print("Failed to write JSON file: {}".format(path))
-        return False
-    print("Successfully written JSON file: {}".format(path))
-    return True
-
 class Parameter:
     def __init__(self, name="", label="", group="", range=None, value=0.0, set_callback=None, set_argument=None, object=None, property=None, mod=True, patch=True):
         self.name = name
@@ -997,7 +1007,7 @@ class Parameters:
                 name="midi_channel",
                 label="MIDI Channel",
                 group="global",
-                range=(MIDI_CHANNEL_MIN, MIDI_CHANNEL_MAX),
+                range=(config.get(("midi", "min_channel"), 0), config.get(("midi", "max_channel"), 15)),
                 set_callback=self.set_midi_channel,
                 mod=False,
                 patch=False
@@ -1023,7 +1033,7 @@ class Parameters:
                 name="glide",
                 label="Glide",
                 group="global",
-                range=(GLIDE_MIN,GLIDE_MAX),
+                range=(config.get(("oscillator", "min_glide"), 0.05), config.get(("oscillator", "max_glide"), 2.0)),
                 set_callback=voice.set_glide,
                 patch=False
             ),
@@ -1045,7 +1055,7 @@ class Parameters:
                 name="bend_amount",
                 label="Bend Amount",
                 group="global",
-                range=BEND_AMOUNT,
+                range=config.get(("oscillator", "max_bend"), 1.0),
                 value=1.0,
                 set_callback=voice.set_pitch_bend_amount,
                 patch=False
@@ -1078,7 +1088,7 @@ class Parameters:
                 name="filter_frequency",
                 label="Frequency",
                 group="voice",
-                range=(FILTER_FREQ_MIN,FILTER_FREQ_MAX),
+                range=(config.get(("oscillator", "filter", "min_frequency"), 60.0), min(mixer.sample_rate*0.45, config.get(("oscillator", "filter", "max_frequency"), 20000.0))),
                 value=1.0,
                 set_callback=voice.set_filter_frequency
             ),
@@ -1086,7 +1096,7 @@ class Parameters:
                 name="filter_resonance",
                 label="Resonace",
                 group="voice",
-                range=(FILTER_RES_MIN, FILTER_RES_MAX),
+                range=(config.get(("oscillator", "filter", "min_resonance"), 0.25), config.get(("oscillator", "filter", "max_resonance"), 16.0)),
                 set_callback=voice.set_filter_resonance
             ),
             Parameter(
@@ -1102,21 +1112,21 @@ class Parameters:
                 name="attack_time",
                 label="Attack Time",
                 group="voice",
-                range=(ENVELOPE_TIME_MIN,ENVELOPE_TIME_MAX),
+                range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
                 set_callback=voice.set_envelope_attack_time
             ),
             Parameter(
                 name="decay_time",
                 label="Decay Time",
                 group="voice",
-                range=(ENVELOPE_TIME_MIN,ENVELOPE_TIME_MAX),
+                range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
                 set_callback=voice.set_envelope_decay_time
             ),
             Parameter(
                 name="release_time",
                 label="Release Time",
                 group="voice",
-                range=(ENVELOPE_TIME_MIN,ENVELOPE_TIME_MAX),
+                range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
                 set_callback=voice.set_envelope_release_time
             ),
             Parameter(
@@ -1139,14 +1149,14 @@ class Parameters:
                 name="glide_0",
                 label="Glide",
                 group="osc0",
-                range=(GLIDE_MIN,GLIDE_MAX),
+                range=(config.get(("oscillator", "min_glide"), 0.05), config.get(("oscillator", "max_glide"), 2.0)),
                 set_callback=voice.oscillators[0].set_glide
             ),
             Parameter(
                 name="bend_amount_0",
                 label="Bend Amount",
                 group="osc0",
-                range=BEND_AMOUNT,
+                range=config.get(("oscillator", "max_bend"), 1.0),
                 value=1.0,
                 set_callback=voice.oscillators[0].set_pitch_bend_amount
             ),
@@ -1168,7 +1178,7 @@ class Parameters:
                 name="coarse_tune_0",
                 label="Coarse Tune",
                 group="osc0",
-                range=COARSE_TUNE,
+                range=config.get(("oscillator", "max_coarse_tune"), 2.0),
                 value=0.5,
                 set_callback=voice.oscillators[0].set_coarse_tune
             ),
@@ -1176,7 +1186,7 @@ class Parameters:
                 name="fine_tune_0",
                 label="Fine Tune",
                 group="osc0",
-                range=FINE_TUNE,
+                range=config.get(("oscillator", "max_fine_tune"), 0.0833),
                 value=0.5,
                 set_callback=voice.oscillators[0].set_fine_tune
             ),
@@ -1229,14 +1239,14 @@ class Parameters:
                 name="glide_1",
                 label="Glide",
                 group="osc1",
-                range=(GLIDE_MIN,GLIDE_MAX),
+                range=(config.get(("oscillator", "min_glide"), 0.05), config.get(("oscillator", "max_glide"), 2.0)),
                 set_callback=voice.oscillators[1].set_glide
             ),
             Parameter(
                 name="bend_amount_1",
                 label="Bend Amount",
                 group="osc1",
-                range=BEND_AMOUNT,
+                range=config.get(("oscillator", "max_bend"), 1.0),
                 value=1.0,
                 set_callback=voice.oscillators[1].set_pitch_bend_amount
             ),
@@ -1258,7 +1268,7 @@ class Parameters:
                 name="coarse_tune_1",
                 label="Coarse Tune",
                 group="osc1",
-                range=COARSE_TUNE,
+                range=config.get(("oscillator", "max_coarse_tune"), 2.0),
                 value=0.5,
                 set_callback=voice.oscillators[1].set_coarse_tune
             ),
@@ -1266,7 +1276,7 @@ class Parameters:
                 name="fine_tune_1",
                 label="Fine Tune",
                 group="osc1",
-                range=FINE_TUNE,
+                range=config.get(("oscillator", "max_fine_tune"), 0.0833),
                 value=0.5,
                 set_callback=voice.oscillators[1].set_fine_tune
             ),
@@ -1434,7 +1444,7 @@ def save_patch(index=0, name="Patch"):
 def read_first_patch():
     return read_patch(0)
 
-#read_first_patch()
+read_first_patch()
 
 print("\n:: Setting Up Menu ::")
 
@@ -1611,18 +1621,18 @@ last_display_now = 0
 while True:
     now = time.monotonic()
 
-    if now >= last_midi_now + MIDI_UPDATE:
+    if now >= last_midi_now + config.get(("midi", "update"), 0.05):
         last_midi_now = now
         process_midi_msgs(uart_midi)
         process_midi_msgs(usb_midi_driver)
         if ble and ble.connected and ble_midi:
             process_midi_msgs(ble_midi)
 
-    if now >= last_encoder_now + ENCODER_UPDATE:
+    if now >= last_encoder_now + config.get(("encoder", "update"), 0.1):
         last_encoder_now = now
         encoder.update()
 
-    if now >= last_display_now + DISPLAY_UPDATE:
+    if now >= last_display_now + config.get(("display", "update"), 0.2):
         last_display_now = now
         display.update()
 

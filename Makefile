@@ -2,7 +2,7 @@ DEVICE = /media/$(USER)/CIRCUITPY/
 LIBDIR = lib
 PATCHDIR = patches
 
-SRCS := boot.py code.py midi.json
+SRCS := boot.py code.py config.json midi.json
 
 all: update
 

@@ -1,0 +1,54 @@
+{
+    "midi": {
+        "max_channel": 15,
+        "min_channel": 0,
+        "uart_tx": "GP4",
+        "uart_rx": "GP5",
+        "update": 0.05
+    },
+    "display": {
+        "type": "ssd1306_128x32",
+        "address": 60,
+        "scl": "GP21",
+        "sda": "GP20",
+        "speed": 1000000,
+        "update": 0.2
+    },
+    "encoder": {
+        "a": "GP12",
+        "b": "GP13",
+        "btn": "GP7",
+        "update": 0.1
+    },
+    "audio": {
+        "rate": 22050,
+        "buffer": 4096,
+        "type": "i2s",
+        "clk": "GP0",
+        "ws": "GP1",
+        "data": "GP2",
+        "pwm_left": "GP0",
+        "pwm_right": "GP1"
+    },
+    "waveform": {
+        "samples": 256,
+        "amplitude": 12000
+    },
+    "oscillator": {
+        "max_coarse_tune": 2.0,
+        "max_fine_tune": 0.0833,
+        "max_bend": 1.0,
+        "max_glide": 2.0,
+        "min_glide": 0.05,
+        "filter": {
+            "max_frequency": 20000.0,
+            "min_frequency": 60.0,
+            "max_resonance": 16.0,
+            "min_resonance": 0.25
+        },
+        "envelope": {
+            "max_time": 2.0,
+            "min_time": 0.05
+        }
+    }
+}
