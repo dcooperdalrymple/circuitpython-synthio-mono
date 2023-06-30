@@ -3,10 +3,7 @@ import time, random
 # Inspired by Arpy class from eighties_arp in https://github.com/todbot/circuitpython-synthio-tricks
 
 class Arpeggiator:
-    def __init__(self, bpm=120, steps=2, update=0.05):
-        self._update_delay = update
-        self._update_now = 0.0
-
+    def __init__(self, bpm=120, steps=2):
         self._enabled = False
         self._gate = 0.3
 
@@ -181,10 +178,6 @@ class Arpeggiator:
             return
 
         now = time.monotonic()
-        if now < self._update_now + self._update_delay:
-            return
-        self._update_now = now
-
         if now >= self._now + self._step_time:
             self._now = now + self._step_time
             if self.get_type() == "random":
