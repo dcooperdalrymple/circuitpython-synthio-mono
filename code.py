@@ -53,7 +53,7 @@ audio = Audio(
     pwm_left=config.gpio(("audio", "pwm_left"), "GP0"),
     pwm_right=config.gpio(("audio", "pwm_right"), "GP1"),
     sample_rate=config.get(("audio", "rate"), 22050),
-    buffer_size=config.get(("audio", "buffer"), 1024)
+    buffer_size=config.get(("audio", "buffer"), 4096)
 )
 
 print("\n:: Initializing Synthio ::")
@@ -490,6 +490,8 @@ parameters.add_parameters([
         set_callback=voice.oscillators[1].set_pan_depth
     )
 ])
+config.deinit()
+gc.collect()
 
 print("\n:: Reading Patches ::")
 patches = Patches(parameters)
@@ -534,10 +536,6 @@ midi.set_pitch_bend(pitch_bend)
 
 midi.init()
 
-loop_delay = config.get("loop_update", 0.01)
-config.deinit()
-gc.collect()
-
 while True:
     voice.update()
 
@@ -546,8 +544,6 @@ while True:
     midi.update(now)
     encoder.update(now)
     display.update(now)
-
-    time.sleep(loop_delay)
 
 print("\n:: Deinitializing ::")
 

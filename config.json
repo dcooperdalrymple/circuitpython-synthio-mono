@@ -1,5 +1,4 @@
 {
-    "loop_update": 0.05,
     "midi": {
         "max_channel": 15,
         "min_channel": 0,
@@ -23,7 +22,7 @@
     },
     "audio": {
         "rate": 22050,
-        "buffer": 1024,
+        "buffer": 4096,
         "type": "i2s",
         "clk": "GP0",
         "ws": "GP1",
