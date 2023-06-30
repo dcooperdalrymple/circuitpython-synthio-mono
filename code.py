@@ -58,6 +58,8 @@ audio = Audio(
 
 print("\n:: Initializing Synthio ::")
 synth = Synth(audio)
+min_filter_frequency=config.get(("oscillator", "filter", "min_frequency"), 60.0)
+max_filter_frequency=min(audio.get_sample_rate()*0.45, config.get(("oscillator", "filter", "max_frequency"), 20000.0))
 
 print("\n:: Building Waveforms ::")
 waveforms = Waveforms(
@@ -226,7 +228,7 @@ parameters.add_parameters([
         name="filter_frequency",
         label="Frequency",
         group="voice",
-        range=(config.get(("oscillator", "filter", "min_frequency"), 60.0), min(audio.get_sample_rate()*0.45, config.get(("oscillator", "filter", "max_frequency"), 20000.0))),
+        range=(min_filter_frequency, max_filter_frequency),
         value=1.0,
         set_callback=voice.set_filter_frequency
     ),
@@ -236,6 +238,27 @@ parameters.add_parameters([
         group="voice",
         range=(config.get(("oscillator", "filter", "min_resonance"), 0.25), config.get(("oscillator", "filter", "max_resonance"), 16.0)),
         set_callback=voice.set_filter_resonance
+    ),
+    Parameter(
+        name="filter_envelope_attack_time",
+        label="Filter Env Attack",
+        group="voice",
+        range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
+        set_callback=voice.set_filter_attack_time
+    ),
+    Parameter(
+        name="filter_envelope_release_time",
+        label="Filter Env Release",
+        group="voice",
+        range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
+        set_callback=voice.set_filter_release_time
+    ),
+    Parameter(
+        name="filter_envelope_amount",
+        label="Filter Env Amount",
+        group="voice",
+        range=(0.0, max_filter_frequency-min_filter_frequency),
+        set_callback=voice.set_filter_amount
     ),
     Parameter(
         name="pan",
@@ -509,6 +532,8 @@ midi.init()
 while True:
     arpeggiator.update()
     midi.update()
+    voice.update()
+
     encoder.update()
     display.update()
 

@@ -1,5 +1,3 @@
-
-
 class LerpBlockInput:
     def __init__(self, synth, rate=0.05, value=0.0):
         self.position = synthio.LFO(
@@ -14,6 +12,8 @@ class LerpBlockInput:
         synth.append(self.lerp)
     def get(self):
         return self.lerp
+    def get_value(self):
+        return self.lerp.value
     def set(self, value):
         self.lerp.a = self.lerp.value
         self.lerp.b = value
@@ -22,6 +22,46 @@ class LerpBlockInput:
         self.position.rate = 1/value
     def get_rate(self):
         return self.position.rate
+
+class AREnvelope:
+    def __init__(self, synth, attack=0.05, release=0.05, amount=1.0):
+        self._pressed = False
+        self._lerp = LerpBlockInput(synth)
+        self.set_attack(attack)
+        self.set_release(release)
+        self.set_amount(amount)
+    def get(self):
+        return self._lerp.get()
+    def get_value(self):
+        return self._lerp.get_value()
+    def is_pressed(self):
+        return self._pressed
+    def set_attack(self, value):
+        self._attack_time = value
+        if self._pressed:
+            self._lerp.set_rate(self._attack_time)
+    def get_attack(self):
+        return self._attack_time
+    def set_release(self, value):
+        self._release_time = value
+        if not self._pressed:
+            self._lerp.set_rate(self._release_time)
+    def get_release(self):
+        return self._release_time
+    def set_amount(self, value):
+        self._amount = value
+        if self._pressed:
+            self._lerp.set(self._amount)
+    def get_amount(self):
+        return self._amount
+    def press(self):
+        self._pressed = True
+        self._lerp.set_rate(self._attack_time)
+        self._lerp.set(self._amount)
+    def release(self):
+        self._lerp.set_rate(self._release_time)
+        self._lerp.set(0.0)
+        self._pressed = False
 
 class Oscillator:
     def __init__(self, synth, waveforms, root=440.0):
@@ -135,6 +175,7 @@ class Voice:
         self._filter_type = self.filter_type
         self.filter_frequency = 1.0
         self.filter_resonance = 0.0
+        self.filter_envelope = AREnvelope(self._synth)
 
         self.oscillators = (Oscillator(self._synth, waveforms), Oscillator(self._synth, waveforms))
 
@@ -146,9 +187,11 @@ class Voice:
             for oscillator in self.oscillators:
                 oscillator.set_frequency(frequency)
                 oscillator.press()
+        self.filter_envelope.press()
     def release(self):
         for oscillator in self.oscillators:
             oscillator.release()
+        self.filter_envelope.release()
         self.note = -1
 
     def set_glide(self, value, index=None):
@@ -189,7 +232,7 @@ class Voice:
                 oscillator.set_waveform(value)
 
     def _update_filter(self):
-        filter = self._synth.build_filter(self.get_filter_type(), self.get_filter_frequency(), self.get_filter_resonance())
+        filter = self._synth.build_filter(self.get_filter_type(), self.get_filter_frequency() + self.filter_envelope.get_value(), self.get_filter_resonance())
         for oscillator in self.oscillators:
             oscillator.set_filter(filter)
     def get_filter_type(self):
@@ -216,6 +259,18 @@ class Voice:
             self._update_filter()
     def get_filter_resonance(self):
         return self.filter_resonance
+    def set_filter_attack_time(self, value):
+        self.filter_envelope.set_attack(value)
+    def get_filter_attack_time(self):
+        return self.filter_envelope.get_attack()
+    def set_filter_release_time(self, value):
+        self.filter_envelope.set_release(value)
+    def get_filter_release_time(self):
+        return self.filter_envelope.get_release()
+    def set_filter_amount(self, value):
+        self.filter_envelope.set_amount(value)
+    def get_filter_amount(self):
+        return self.filter_envelope.get_amount()
 
     def _get_velocity_mod(self):
         return 1.0 - (1.0 - self.velocity) * self.velocity_amount
@@ -271,3 +326,6 @@ class Voice:
         else:
             for oscillator in self.oscillators:
                 oscillator.set_pan(value)
+
+    def update(self):
+        self._update_filter()
