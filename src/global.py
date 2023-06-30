@@ -103,3 +103,15 @@ def map_dict(value, dict):
     return map_array(value, list(dict))
 def unmap_dict(value, dict):
     return unmap_array(value, list(dict))
+
+# Strings
+
+def truncate_str(self, value, length, right_aligned=False):
+    if len(value) > length:
+        value = value[:length]
+    elif len(value) < length:
+        if right_aligned:
+            value = " " * (length - len(value)) + value
+        else:
+            value = value + " " * (length - len(value))
+    return value

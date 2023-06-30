@@ -133,6 +133,67 @@ class DisplaySSD1306_128x64(DisplaySSD1306):
         self._value_label.anchor_point = (0.5,0.5)
         self._value_label.anchored_position = (self._width//2,self.height//4*3)
 
+class DisplayCharacterLCD(Display):
+    def __init__(self, rs, en, d7, d6, d5, d4, columns, rows, update=0.2):
+        from digitalio import DigitalInOut
+        from adafruit_character_lcd.character_lcd import Character_LCD_Mono
+        import adafruit_mcp230xx
+        import adafruit_74hc595
+        import adafruit_bus_device
+
+        self._rs = DigitalInOut(rs)
+        self._en = DigitalInOut(en)
+        self._d7 = DigitalInOut(d7)
+        self._d6 = DigitalInOut(d6)
+        self._d5 = DigitalInOut(d5)
+        self._d4 = DigitalInOut(d4)
+        self._columns = columns
+        self._rows = rows
+
+        self._lcd = Character_LCD_Mono(self._rs, self._en, self._d4, self._d5, self._d6, self._d7, self._columns, self._rows)
+        self._lcd.cursor = False
+        self._lcd.backlight = True
+        self._lcd.text_direction = lcd.LEFT_TO_RIGHT
+
+        self._select_pos = (0, self._columns-1)
+
+        super().__init__(update)
+    def set_selected(self, value):
+        if value:
+            self.cursor = True
+            self.blink = True
+        else:
+            self.cursor = False
+            self.blink = False
+    def _write(self, value, length=None, right_aligned=False, column=0, row=0):
+        if not length:
+            length = self._columns
+        if type(value) is float:
+            value = "{:.2f}".format(value)
+        lcd.cursor_position(column, row)
+        lcd.message = truncate_str(str(value), length, right_aligned)
+        lcd.cursor_position(self._select_pos[0], self._select_pos[1])
+
+class DisplayCharacterLCD_1602(DisplayCharacterLCD):
+    def __init__(self, rs, en, d7, d6, d5, d4, update=0.2):
+        super().__init__(rs, en, d7, d6, d5, d4, 16, 2)
+    def set_title(self, text):
+        self._write(text, self._columns-6, False, 0, 0)
+    def set_group(self, text):
+        self._write(text, 6, True, self._columns-6, 0)
+    def set_value(self, text):
+        self._write(text, self._columns, True, 0, 1)
+
+class DisplayCharacterLCD_1604(DisplayCharacterLCD):
+    def __init__(self, rs, en, d7, d6, d5, d4, update=0.2):
+        super().__init__(rs, en, d7, d6, d5, d4, 16, 4)
+    def set_title(self, text):
+        self._write(text, row=1)
+    def set_group(self, text):
+        self._write(text, row=0)
+    def set_value(self, text):
+        self._write(text, row=3)
+
 def get_display(config):
     type = config.get(("display", "type"), "ssd1306_128x32")
     if type == "ssd1306_128x32":
@@ -148,6 +209,24 @@ def get_display(config):
             sda=config.gpio(("display", "sda"), "GP20"),
             speed=config.get(("display", "speed"), 1000000),
             address=config.get(("display", "address"), 0x3c)
+        )
+    elif type == "1602":
+        return DisplayCharacterLCD_1602(
+            rs=config.gpio(("display", "rs")),
+            en=config.gpio(("display", "en")),
+            d7=config.gpio(("display", "d7")),
+            d6=config.gpio(("display", "d6")),
+            d5=config.gpio(("display", "d5")),
+            d4=config.gpio(("display", "d4"))
+        )
+    elif type == "1604":
+        return DisplayCharacterLCD_1604(
+            rs=config.gpio(("display", "rs")),
+            en=config.gpio(("display", "en")),
+            d7=config.gpio(("display", "d7")),
+            d6=config.gpio(("display", "d6")),
+            d5=config.gpio(("display", "d5")),
+            d4=config.gpio(("display", "d4"))
         )
     else:
         return Display() # Dummy display

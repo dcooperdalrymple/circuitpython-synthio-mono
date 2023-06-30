@@ -9,5 +9,4 @@
 - Envelope retrigger
 - REAPER JSFX Controller Plugin
 - Patch saving and loading menu system
-- Pulse Width Modulation?
-- 1602 Display Support
+- Dynamic waveform generation with pulse width modulation and lerping support
