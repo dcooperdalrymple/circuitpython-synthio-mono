@@ -26,8 +26,9 @@ class Encoder:
     def set_release(self, callback):
         self._release = callback
 
-    def update(self):
-        now = time.monotonic()
+    def update(self, now=None):
+        if not now:
+            now = time.monotonic()
         if now < self._now + self._update:
             return
         self._now = now

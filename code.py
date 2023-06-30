@@ -539,12 +539,13 @@ config.deinit()
 gc.collect()
 
 while True:
-    arpeggiator.update()
-    midi.update()
     voice.update()
 
-    encoder.update()
-    display.update()
+    now = time.monotonic()
+    arpeggiator.update(now)
+    midi.update(now)
+    encoder.update(now)
+    display.update(now)
 
     time.sleep(loop_delay)
 

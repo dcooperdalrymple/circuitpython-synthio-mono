@@ -173,11 +173,13 @@ class Arpeggiator:
         if not self._notes and self._release:
             self._release()
 
-    def update(self):
+    def update(self, now=None):
         if not self._enabled or not self._notes:
             return
 
-        now = time.monotonic()
+        if not now:
+            now = time.monotonic()
+
         if now >= self._now + self._step_time:
             self._now = now + self._step_time
             if self.get_type() == "random":

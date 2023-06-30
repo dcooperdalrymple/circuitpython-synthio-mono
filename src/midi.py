@@ -92,7 +92,7 @@ class Midi:
         self._thru = value
 
     def _process_message(self, msg):
-        if msg == None:
+        if not msg:
             return
 
         if isinstance(msg, NoteOn):
@@ -130,8 +130,9 @@ class Midi:
     def get_control_parameter(self, control, default=None):
         return self._map.get(str(control), default)
 
-    def update(self):
-        now = time.monotonic()
+    def update(self, now=None):
+        if not now:
+            now = time.monotonic()
         if now < self._now + self._update:
             return
         self._now = now
@@ -142,15 +143,6 @@ class Midi:
             self._process_messages(self._ble_midi)
 
     def deinit(self):
-        from busio import UART
-        import usb_midi
-        import adafruit_midi
-        from adafruit_midi.note_on import NoteOn
-        from adafruit_midi.note_off import NoteOff
-        from adafruit_midi.control_change import ControlChange
-        from adafruit_midi.program_change import ProgramChange
-        from adafruit_midi.pitch_bend import PitchBend
-
         del self._map
 
         if self._ble and self._ble.connected and self._ble_midi:

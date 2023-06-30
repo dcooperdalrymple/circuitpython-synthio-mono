@@ -13,8 +13,9 @@ class Display:
         pass
     def queue(self, title, group, value):
         self._queued = (title, group, value)
-    def update(self):
-        now = time.monotonic()
+    def update(self, now=None):
+        if not now:
+            now = time.monotonic()
         if now < self._now + self._delay:
             return
         self._now = now
