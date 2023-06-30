@@ -70,20 +70,25 @@ voice = Voice(synth, waveforms)
 
 print("\n:: Managing Keyboard ::")
 keyboard = Keyboard()
+arpeggiator = Arpeggiator()
+keyboard.set_arpeggiator(arpeggiator)
 
 def press(note, velocity):
     voice.press(note, velocity)
 keyboard.set_press(press)
+arpeggiator.set_press(press)
 
 def release():
     voice.release()
 keyboard.set_release(release)
+arpeggiator.set_release(release)
 
 print("\n:: Routing Parameters ::")
 parameters = Parameters()
 
 parameters.add_groups([
     ParameterGroup("global", "Global"),
+    ParameterGroup("arp", "Arp"),
     ParameterGroup("voice", "Voice"),
     ParameterGroup("osc0", "Osc 1"),
     ParameterGroup("osc1", "Osc 2"),
@@ -153,6 +158,53 @@ parameters.add_parameters([
         group="global",
         range=parameters.get_mod_parameters(),
         set_callback=parameters.set_mod_parameter
+    ),
+
+    # Arpeggiator
+    Parameter(
+        name="arp_enabled",
+        label="Arpeggiator",
+        group="arp",
+        range=True,
+        set_callback=arpeggiator.set_enabled,
+        set_argument=keyboard # Allows the notes to be updated
+    ),
+    Parameter(
+        name="arp_type",
+        label="Type",
+        group="arp",
+        range=arpeggiator.get_types(),
+        set_callback=arpeggiator.set_type
+    ),
+    Parameter(
+        name="arp_octaves",
+        label="Octaves",
+        group="arp",
+        range=3,
+        value=0.5,
+        set_callback=arpeggiator.set_octaves
+    ),
+    Parameter(
+        name="arp_bpm",
+        label="BPM",
+        group="arp",
+        range=(config.get(("arpeggiator", "min_bpm"), 60), config.get(("arpeggiator", "max_bpm"), 240)),
+        set_callback=arpeggiator.set_bpm
+    ),
+    Parameter(
+        name="arp_steps",
+        label="Steps Per Beat",
+        group="arp",
+        range=arpeggiator.get_step_options(),
+        set_callback=arpeggiator.set_step_option
+    ),
+    Parameter(
+        name="arp_gate",
+        label="Gate",
+        group="arp",
+        range=(config.get(("arpeggiator", "min_gate"), 0.1), config.get(("arpeggiator", "max_gate"), 1.0)),
+        value=1.0,
+        set_callback=arpeggiator.set_gate
     ),
 
     # Voice
@@ -455,6 +507,7 @@ midi.set_pitch_bend(pitch_bend)
 midi.init()
 
 while True:
+    arpeggiator.update()
     midi.update()
     encoder.update()
     display.update()

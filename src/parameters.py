@@ -78,6 +78,10 @@ class Parameter:
             return len(self.range)-1
         elif type(self.range) is bool:
             return 1
+        elif type(self.range) is tuple and len(self.range) == 2 and type(self.range[0]) is int:
+            return self.range[1] - self.range[0] + 1
+        elif type(self.range) is int: # +/- linear range
+            return self.range * 2 + 1
         else:
             return 20
     def get_step_size(self):

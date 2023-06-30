@@ -8,7 +8,7 @@ WAVDIR = waveforms
 
 SRCS := boot.py code.py config.json midi.json
 
-LIB_SRCS := $(SRCDIR)/global.py $(SRCDIR)/config.py $(SRCDIR)/display.py $(SRCDIR)/encoder.py $(SRCDIR)/midi.py $(SRCDIR)/audio.py $(SRCDIR)/synth.py $(SRCDIR)/waveforms.py $(SRCDIR)/voice.py $(SRCDIR)/keyboard.py $(SRCDIR)/parameters.py $(SRCDIR)/patches.py $(SRCDIR)/menu.py
+LIB_SRCS := $(SRCDIR)/global.py $(SRCDIR)/config.py $(SRCDIR)/display.py $(SRCDIR)/encoder.py $(SRCDIR)/midi.py $(SRCDIR)/audio.py $(SRCDIR)/synth.py $(SRCDIR)/waveforms.py $(SRCDIR)/voice.py $(SRCDIR)/keyboard.py $(SRCDIR)/arpeggiator.py $(SRCDIR)/parameters.py $(SRCDIR)/patches.py $(SRCDIR)/menu.py
 LIB_PY = $(LIBDIR)/synthio_mono.py
 LIB_MPY = $(LIBDIR)/synthio_mono.mpy
 

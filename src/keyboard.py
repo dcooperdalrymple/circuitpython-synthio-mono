@@ -7,11 +7,14 @@ class Keyboard:
         self._sustained = []
         self._press = None
         self._release = None
+        self._arpeggiator = None
 
     def set_press(self, callback):
         self._press = callback
     def set_release(self, callback):
         self._release = callback
+    def set_arpeggiator(self, arpeggiator):
+        self._arpeggiator = arpeggiator
 
     def get_types(self):
         return self._note_types
@@ -30,16 +33,21 @@ class Keyboard:
             if self._sustain:
                 self._sustained = self._notes.copy()
             if update:
-                self._update()
+                self.update()
 
-    def _has_notes(self):
+    def has_notes(self):
         if self._sustain and self._sustained:
             return True
         if self._notes:
             return True
         return False
+    def get_notes(self):
+        if not self.has_notes():
+            return []
+        return (self._notes if self._notes else []) + (self._sustained if self._sustain and self._sustained else [])
+
     def _get_low(self):
-        if not self._has_notes():
+        if not self.has_notes():
             return None
         selected = (127, 0)
         if self._notes:
@@ -52,7 +60,7 @@ class Keyboard:
                     selected = note
         return selected
     def _get_high(self):
-        if not self._has_notes():
+        if not self.has_notes():
             return None
         selected = (0, 0)
         if self._notes:
@@ -70,8 +78,9 @@ class Keyboard:
         if self._notes:
             return self._notes[-1]
         return None
-    def get(self):
-        type = self._note_types[self._type]
+    def get(self, type=None):
+        if type is None:
+            type = self._note_types[self._type]
         if type == "high":
             return self._get_high()
         elif type == "low":
@@ -86,18 +95,23 @@ class Keyboard:
         if self._sustain:
             self._sustained.append(note)
         if update:
-            self._update()
+            self.update()
     def remove(self, notenum, update=True, remove_sustained=False):
         self._notes = [note for note in self._notes if note[0] != notenum]
         if remove_sustained and self._sustain and self._sustained:
             self._sustained = [note for note in self._sustained if note[0] != notenum]
         if update:
-            self._update()
+            self.update()
 
-    def _update(self):
-        note = self.get()
-        if not note:
-            if self._release:
-                self._release()
-        elif self._press:
-            self._press(note[0], note[1])
+    def update(self):
+        if not self._arpeggiator or not self._arpeggiator.is_enabled():
+            note = self.get()
+            if not note:
+                if self._release:
+                    self._release()
+            elif self._press:
+                self._press(note[0], note[1])
+        elif self.has_notes():
+            self._arpeggiator.update_notes(self.get_notes())
+        else:
+            self._arpeggiator.update_notes()

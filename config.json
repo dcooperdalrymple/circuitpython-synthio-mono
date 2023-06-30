@@ -30,6 +30,12 @@
         "pwm_left": "GP0",
         "pwm_right": "GP1"
     },
+    "arpeggiator": {
+        "max_bpm": 240,
+        "min_bpm": 60,
+        "max_gate": 1.0,
+        "min_gate": 0.1
+    },
     "waveform": {
         "samples": 256,
         "amplitude": 12000
