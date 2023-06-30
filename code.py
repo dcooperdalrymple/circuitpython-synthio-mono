@@ -57,13 +57,7 @@ audio = Audio(
 )
 
 print("\n:: Initializing Synthio ::")
-min_filter_frequency=config.get(("oscillator", "filter", "min_frequency"), 60.0)
-max_filter_frequency=min(audio.get_sample_rate()*0.45, config.get(("oscillator", "filter", "max_frequency"), 20000.0))
-synth = Synth(
-    audio,
-    min_filter_frequency=min_filter_frequency,
-    max_filter_frequency=max_filter_frequency
-)
+synth = Synth(audio)
 
 print("\n:: Building Waveforms ::")
 waveforms = Waveforms(
@@ -72,7 +66,14 @@ waveforms = Waveforms(
 )
 
 print("\n:: Building Voice ::")
-voice = Voice(synth, waveforms)
+min_filter_frequency=config.get(("oscillator", "filter", "min_frequency"), 60.0)
+max_filter_frequency=min(audio.get_sample_rate()*0.45, config.get(("oscillator", "filter", "max_frequency"), 20000.0))
+voice = Voice(
+    synth,
+    waveforms,
+    min_filter_frequency=min_filter_frequency,
+    max_filter_frequency=max_filter_frequency
+)
 
 print("\n:: Managing Keyboard ::")
 keyboard = Keyboard()

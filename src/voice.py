@@ -158,7 +158,7 @@ class Oscillator:
         self.note.panning.offset = value
 
 class Voice:
-    def __init__(self, synth, waveforms):
+    def __init__(self, synth, waveforms, min_filter_frequency=60.0, max_filter_frequency=20000.0):
         self._synth = synth
 
         self.note = -1
@@ -176,6 +176,9 @@ class Voice:
         self.filter_frequency = 1.0
         self.filter_resonance = 0.0
         self.filter_envelope = AREnvelope(self._synth)
+
+        self._min_filter_frequency = min_filter_frequency
+        self._max_filter_frequency = max_filter_frequency
 
         self.oscillators = (Oscillator(self._synth, waveforms), Oscillator(self._synth, waveforms))
 
@@ -232,7 +235,11 @@ class Voice:
                 oscillator.set_waveform(value)
 
     def _update_filter(self):
-        filter = self._synth.build_filter(self.get_filter_type(), self.get_filter_frequency() + self.filter_envelope.get_value(), self.get_filter_resonance())
+        type = self.get_filter_type()
+        frequency = min(max(self.get_filter_frequency() + self.filter_envelope.get_value(), self._min_filter_frequency), self._max_filter_frequency)
+        resonance = self.get_filter_resonance()
+
+        filter = self._synth.build_filter(type, frequency, resonance)
         for oscillator in self.oscillators:
             oscillator.set_filter(filter)
     def get_filter_type(self):
