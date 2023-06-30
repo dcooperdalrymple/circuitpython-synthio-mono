@@ -153,14 +153,16 @@ class Arpeggiator:
             notes.sort(key=lambda x: x[0], reverse=True)
         elif type == "updown":
             notes.sort(key=lambda x: x[0])
-            _notes = notes[1:-1].copy()
-            _notes.reverse()
-            notes = notes + _notes
+            if len(notes) > 2:
+                _notes = notes[1:-1].copy()
+                _notes.reverse()
+                notes = notes + _notes
         elif type == "downup":
             notes.sort(key=lambda x: x[0], reverse=True)
-            _notes = notes[1:-1].copy()
-            _notes.reverse()
-            notes = notes + _notes
+            if len(notes) > 2:
+                _notes = notes[1:-1].copy()
+                _notes.reverse()
+                notes = notes + _notes
         # "played" = notes stay as is, "random" = index is randomized on update
 
         return notes
