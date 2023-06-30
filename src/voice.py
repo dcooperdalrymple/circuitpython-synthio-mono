@@ -176,6 +176,7 @@ class Oscillator:
 class Voice:
     def __init__(self, synth, waveforms, min_filter_frequency=60.0, max_filter_frequency=20000.0):
         self._synth = synth
+        self._waveforms = waveforms
 
         self.note = -1
         self.velocity = 0.0
@@ -192,6 +193,13 @@ class Voice:
         self.filter_frequency = 1.0
         self.filter_resonance = 0.0
         self.filter_envelope = AREnvelope(self._synth)
+        self.filter_lfo = synthio.LFO(
+            waveform=self._waveforms.get_data("sine"),
+            rate=1.0,
+            scale=0.0,
+            offset=0.0
+        )
+        self._synth.append(self.filter_lfo)
 
         self._min_filter_frequency = min_filter_frequency
         self._max_filter_frequency = max_filter_frequency
@@ -253,7 +261,7 @@ class Voice:
 
     def _update_filter(self):
         type = self.get_filter_type()
-        frequency = min(max(self.get_filter_frequency() + self.filter_envelope.get_value(), self._min_filter_frequency), self._max_filter_frequency)
+        frequency = min(max(self.get_filter_frequency() + self.filter_envelope.get_value() + self.filter_lfo.value, self._min_filter_frequency), self._max_filter_frequency)
         resonance = self.get_filter_resonance()
 
         if self._filter_buffer[0] == type and self._filter_buffer[1] == frequency and self._filter_buffer[2] == resonance:
@@ -299,6 +307,14 @@ class Voice:
         self.filter_envelope.set_amount(value)
     def get_filter_amount(self):
         return self.filter_envelope.get_amount()
+    def set_filter_lfo_rate(self, value):
+        self.filter_lfo.rate = value
+    def get_filter_lfo_rate(self):
+        return self.filter_lfo.rate
+    def set_filter_lfo_depth(self, value):
+        self.filter_lfo.scale = value
+    def get_filter_lfo_depth(self):
+        return self.filter_lfo.scale
 
     def _get_velocity_mod(self):
         return 1.0 - (1.0 - self.velocity) * self.velocity_amount

@@ -266,6 +266,19 @@ parameters.add_parameters([
         set_callback=voice.set_filter_amount
     ),
     Parameter(
+        name="filter_lfo_rate",
+        label="Filter Lfo Rate",
+        group="voice",
+        set_callback=voice.set_filter_lfo_rate
+    ),
+    Parameter(
+        name="filter_lfo_depth",
+        label="Filter Lfo Depth",
+        group="voice",
+        range=(0.0, (max_filter_frequency-min_filter_frequency)/2),
+        set_callback=voice.set_filter_lfo_depth
+    ),
+    Parameter(
         name="pan",
         label="Pan",
         group="voice",
