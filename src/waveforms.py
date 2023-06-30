@@ -1,10 +1,9 @@
-import os, random
-import ulab.numpy as numpy
-
 class Waveform:
     def __init__(self, name, data):
         self.name = name
         self.data = data
+    def deinit(self):
+        del self.data
 
 class Waveforms:
     def __init__(self, samples=256, amplitude=12000, dir="/waveforms"):
@@ -50,18 +49,20 @@ class Waveforms:
 
     def _read_wav_data(self, filename):
         import adafruit_wave
+        data = None
         with adafruit_wave.open(self._dir+"/"+filename) as w:
-            if w.getsampwidth() != 2 or w.getnchannels() != 1:
+            if w.getsampwidth() == 2 and w.getnchannels() == 1:
+                # Read into numpy array, resize (with linear interpolation) into designated buffer size, and normalize
+                data = numpy.frombuffer(w.readframes(w.getnframes()), dtype=numpy.int16)
+                data = numpy.array(numpy.interp(numpy.linspace(0,1,self._samples), numpy.linspace(0,1,data.size), data), dtype=numpy.int16)
+                norm = max(numpy.max(data), abs(numpy.min(data)))
+                if norm:
+                    data = numpy.array(data*(self._amplitude/norm), dtype=numpy.int16)
+            else:
                 print("Failed to read {}: unsupported format".format(filename))
-                return None
-            # Read into numpy array, resize (with linear interpolation) into designated buffer size, and normalize
-            data = numpy.frombuffer(w.readframes(w.getnframes()), dtype=numpy.int16)
-            data = numpy.array(numpy.interp(numpy.linspace(0,1,self._samples), numpy.linspace(0,1,data.size), data), dtype=numpy.int16)
-            norm = max(numpy.max(data), abs(numpy.min(data)))
-            if not norm:
-                return data
-            return numpy.array(data*(self._amplitude/norm), dtype=numpy.int16)
-        return None
+        free_module(adafruit_wave)
+        del adafruit_wave
+        return data
     def _valid_wav_filename(self, filename):
         return len(filename) > len("a.wav") and filename[-4:] == ".wav"
     def _get_wav_name(self, filename):
@@ -73,3 +74,8 @@ class Waveforms:
             return [filename for filename in os.listdir(self._dir) if self._valid_wav_filename(filename)]
         except:
             return []
+
+    def deinit(self):
+        for item in self._items:
+            item.deinit()
+        del self._items

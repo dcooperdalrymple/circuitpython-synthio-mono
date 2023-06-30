@@ -1,4 +1,3 @@
-
 class MenuItem:
     def __init__(self, group_index=0, group=None, parameter_index=0, parameter=None):
         self.group_index = group_index
@@ -97,3 +96,8 @@ class Menu:
         self._display.set_selected(self._selected)
     def selected(self):
         return self._selected
+
+    def deinit(self):
+        del self._parameters
+        del self._display
+        del self._item

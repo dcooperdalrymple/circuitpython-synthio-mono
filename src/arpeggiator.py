@@ -1,5 +1,3 @@
-import time, random
-
 # Inspired by Arpy class from eighties_arp in https://github.com/todbot/circuitpython-synthio-tricks
 
 class Arpeggiator:
@@ -192,3 +190,9 @@ class Arpeggiator:
         if now - self._now > self._gate_duration:
             if self._release:
                 self._release()
+
+    def deinit(self):
+        del self._step_options
+        del self._types
+        del self._raw_notes
+        del self._notes

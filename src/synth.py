@@ -1,7 +1,5 @@
 class Synth:
     def __init__(self, audio):
-        import synthio
-
         self._synth = synthio.Synthesizer(
             sample_rate=audio.get_sample_rate(),
             channel_count=2
@@ -30,3 +28,5 @@ class Synth:
     def deinit(self):
         self._synth.release_all()
         self._synth.deinit()
+        del self._synth
+        del self._filter_types

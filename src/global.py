@@ -1,33 +1,75 @@
-import os, json, math, re
+# Modules
+
+import gc, os, sys, time, math, random, board
+import ulab.numpy as numpy
+import synthio
+from audiomixer import Mixer
+
+from busio import UART
+import usb_midi, adafruit_midi
+from adafruit_midi.note_on import NoteOn
+from adafruit_midi.note_off import NoteOff
+from adafruit_midi.control_change import ControlChange
+from adafruit_midi.program_change import ProgramChange
+from adafruit_midi.pitch_bend import PitchBend
+
+from digitalio import DigitalInOut, Direction, Pull
+from rotaryio import IncrementalEncoder
+from adafruit_debouncer import Debouncer
+
+def free_module(mod):
+    if type(mod) is tuple:
+        for _mod in mod:
+            free_module(_mod)
+    else:
+        name = mod.__name__
+        if name in sys.modules:
+            del sys.modules[name]
+        gc.collect()
+def free_all_modules():
+    for name in sys.modules:
+        del sys.modules[name]
+    gc.collect()
 
 # JSON
 
 def read_json(path):
+    import json
+    data = None
     try:
         with open(path, "r") as file:
             data = json.load(file)
+        print("Successfully read JSON file: {}".format(path))
     except:
         print("Failed to read JSON file: {}".format(path))
-        return None
-    print("Successfully read JSON file: {}".format(path))
+    free_module(json)
+    del json
     return data
 def save_json(path, data):
+    import json
     if not data:
         return False
+    result = False
     try:
         with open(path, "w") as file:
             json.dump(data, file)
+        print("Successfully written JSON file: {}".format(path))
+        result = True
     except:
         print("Failed to write JSON file: {}".format(path))
-        return False
-    print("Successfully written JSON file: {}".format(path))
-    return True
+    free_module(json)
+    del json
+    return result
 
 # Files
 
 def slugify(value):
+    import re
     value = re.sub(r'[^\w\s-]', '', value.lower())
-    return re.sub(r'[-\s]+', '-', value).strip('-_')
+    value = re.sub(r'[-\s]+', '-', value).strip('-_')
+    free_module(re)
+    del re
+    return value
 
 # Mapping
 

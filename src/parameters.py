@@ -1,4 +1,3 @@
-
 class Parameter:
     def __init__(self, name="", label="", group="", range=None, value=0.0, set_callback=None, set_argument=None, object=None, property=None, mod=True, patch=True):
         self.name = name
@@ -163,3 +162,8 @@ class Parameters:
         return self._mod_parameters[self._mod_parameter]
     def set_mod_parameter(self, value):
         self._mod_parameter = value
+
+    def deinit(self):
+        del self._mod_parameters
+        del self._items
+        del self._groups

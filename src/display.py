@@ -26,6 +26,7 @@ class Display:
             self.set_value(self._queued[2])
             self._queued = None
     def deinit(self):
+        del self._queued
         pass
 
 class DisplaySSD1306(Display):
@@ -110,7 +111,12 @@ class DisplaySSD1306(Display):
             self._title_label.color = 0xFFFFFF
             self._title_label.background_color = 0x000000
     def deinit(self):
+        from busio import I2C
+        import displayio, adafruit_displayio_ssd1306, terminalio
+        from adafruit_display_text import label
+
         displayio.release_displays()
+
         super().deinit()
 
 class DisplaySSD1306_128x32(DisplaySSD1306):
@@ -137,9 +143,7 @@ class DisplayCharacterLCD(Display):
     def __init__(self, rs, en, d7, d6, d5, d4, columns, rows, update=0.2):
         from digitalio import DigitalInOut
         from adafruit_character_lcd.character_lcd import Character_LCD_Mono
-        import adafruit_mcp230xx
-        import adafruit_74hc595
-        import adafruit_bus_device
+        import adafruit_mcp230xx, adafruit_74hc595, adafruit_bus_device
 
         self._rs = DigitalInOut(rs)
         self._en = DigitalInOut(en)
@@ -173,6 +177,20 @@ class DisplayCharacterLCD(Display):
         lcd.cursor_position(column, row)
         lcd.message = truncate_str(str(value), length, right_aligned)
         lcd.cursor_position(self._select_pos[0], self._select_pos[1])
+    def deinit(self):
+        from adafruit_character_lcd.character_lcd import Character_LCD_Mono
+        import adafruit_mcp230xx, adafruit_74hc595, adafruit_bus_device
+
+        del self._select_pos
+        del self._lcd
+        del self._rs
+        del self._en
+        del self._d7
+        del self._d6
+        del self._d5
+        del self._d4
+
+        super().deinit()
 
 class DisplayCharacterLCD_1602(DisplayCharacterLCD):
     def __init__(self, rs, en, d7, d6, d5, d4, update=0.2):

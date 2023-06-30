@@ -115,3 +115,9 @@ class Keyboard:
             self._arpeggiator.update_notes(self.get_notes())
         else:
             self._arpeggiator.update_notes()
+
+    def deinit(self):
+        del self._arpeggiator
+        del self._sustained
+        del self._notes
+        del self._note_types

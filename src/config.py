@@ -1,5 +1,3 @@
-import board
-
 class Config:
 
     def __init__(self, path="/config.json"):
@@ -20,3 +18,6 @@ class Config:
 
     def gpio(self, property, default=None):
         return getattr(board, self.get(property, default), None)
+
+    def deinit(self):
+        del self._data

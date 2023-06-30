@@ -1,5 +1,3 @@
-from audiomixer import Mixer
-import synthio
 
 class Audio:
 
@@ -42,3 +40,5 @@ class Audio:
     def deinit(self):
         self._mixer.deinit()
         self._output.deinit()
+        del self._mixer
+        del self._output

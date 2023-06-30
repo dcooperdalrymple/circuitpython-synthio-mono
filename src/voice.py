@@ -22,6 +22,9 @@ class LerpBlockInput:
         self.position.rate = 1/value
     def get_rate(self):
         return self.position.rate
+    def deinit(self):
+        del self.lerp
+        del self.position
 
 class AREnvelope:
     def __init__(self, synth, attack=0.05, release=0.05, amount=1.0):
@@ -62,6 +65,9 @@ class AREnvelope:
         self._lerp.set_rate(self._release_time)
         self._lerp.set(0.0)
         self._pressed = False
+    def deinit(self):
+        self._lerp.deinit()
+        del self._lerp
 
 class Oscillator:
     def __init__(self, synth, waveforms, root=440.0):
@@ -156,6 +162,16 @@ class Oscillator:
         self.note.panning.scale = value
     def set_pan(self, value):
         self.note.panning.offset = value
+
+    def deinit(self):
+        del self.note
+        self.pitch_bend_lerp.deinit()
+        del self.pitch_bend_lerp
+        del self.vibrato
+        self.frequency_lerp.deinit()
+        del self.frequency_lerp
+        del self._waveforms
+        del self._synth
 
 class Voice:
     def __init__(self, synth, waveforms, min_filter_frequency=60.0, max_filter_frequency=20000.0):
@@ -341,3 +357,12 @@ class Voice:
 
     def update(self):
         self._update_filter()
+
+    def deinit(self):
+        for oscillator in self.oscillators:
+            oscillator.deinit()
+        del self.oscillators
+        del self._filter_buffer
+        self.filter_envelope.deinit()
+        del self.filter_envelope
+        del self._synth

@@ -535,6 +535,9 @@ midi.set_pitch_bend(pitch_bend)
 midi.init()
 
 loop_delay = config.get("loop_update", 0.01)
+config.deinit()
+gc.collect()
+
 while True:
     arpeggiator.update()
     midi.update()
@@ -547,23 +550,32 @@ while True:
 
 print("\n:: Deinitializing ::")
 
-print("Synthesizer")
+menu.deinit()
+del menu
+patches.deinit()
+del patches
+parameters.deinit()
+del parameters
+arpeggiator.deinit()
+del arpeggiator
+keyboard.deinit()
+del keyboard
+voice.deinit()
+del voice
+waveforms.deinit()
+del waveforms
 synth.deinit()
-
-print("Audio")
+del synth
 audio.deinit()
-
-print("Midi")
+del audio
 midi.deinit()
-
-print("Encoder")
+del midi
 encoder.deinit()
-
-print("Display")
+del encoder
 display.deinit()
-
-print("Memory")
-gc.collect()
+del display
+led.value = False
+del led
+free_all_modules()
 
 print("\n:: Process Ended ::")
-led.value = False

@@ -1,5 +1,3 @@
-import os
-
 class Patches:
     def __init__(self, parameters, dir="/patches"):
         self._parameters = parameters
@@ -68,3 +66,7 @@ class Patches:
         return save_json(path, data)
     def read_first(self):
         return self.read(0)
+
+    def deinit(self):
+        del self._parameters
+        del self._items

@@ -1,17 +1,8 @@
 import time
-from adafruit_midi.note_on import NoteOn
-from adafruit_midi.note_off import NoteOff
-from adafruit_midi.control_change import ControlChange
-from adafruit_midi.program_change import ProgramChange
-from adafruit_midi.pitch_bend import PitchBend
 
 class Midi:
 
     def __init__(self, uart_tx=None, uart_rx=None, update=0.05, map_path="/midi.json"):
-        from busio import UART
-        import usb_midi
-        import adafruit_midi
-        
         self._thru = False
         self._note_on = None
         self._note_off = None
@@ -44,9 +35,8 @@ class Midi:
         )
 
         try:
-            import adafruit_ble
+            import adafruit_ble, adafruit_ble_midi
             from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
-            import adafruit_ble_midi
 
             self._ble_midi_service = adafruit_ble_midi.MIDIService()
             self._ble_advertisement = ProvideServicesAdvertisement(self._ble_midi_service)
@@ -64,10 +54,14 @@ class Midi:
                 debug=False
             )
         except:
-            self._ble = None
+            self._ble_midi_service = None
             self._ble_advertisement = None
+            self._ble = None
             self._ble_midi = None
             print("Device not bluetooth capable")
+
+            free_module((ProvideServicesAdvertisement, adafruit_ble_midi, adafruit_ble))
+            del ProvideServicesAdvertisement, adafruit_ble_midi, adafruit_ble
 
         self._map = read_json(map_path)
 
@@ -148,6 +142,25 @@ class Midi:
             self._process_messages(self._ble_midi)
 
     def deinit(self):
+        from busio import UART
+        import usb_midi
+        import adafruit_midi
+        from adafruit_midi.note_on import NoteOn
+        from adafruit_midi.note_off import NoteOff
+        from adafruit_midi.control_change import ControlChange
+        from adafruit_midi.program_change import ProgramChange
+        from adafruit_midi.pitch_bend import PitchBend
+
+        del self._map
+
         if self._ble and self._ble.connected and self._ble_midi:
             for connection in self._ble.connections:
                 connection.disconnect()
+            del self._ble_midi_service
+            del self._ble_advertisement
+            del self._ble
+            del self._ble_midi
+
+        del self._usb_midi_driver
+        del self._uart_midi
+        del self._uart

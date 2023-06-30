@@ -1,12 +1,8 @@
 import time
 
 class Encoder:
-    
-    def __init__(self, pin_a, pin_b, pin_button, update=0.1):
-        from digitalio import DigitalInOut, Direction, Pull
-        from rotaryio import IncrementalEncoder
-        from adafruit_debouncer import Debouncer
 
+    def __init__(self, pin_a, pin_b, pin_button, update=0.1):
         self._update = 0.1
         self._now = 0.0
 
@@ -55,4 +51,10 @@ class Encoder:
             self._release()
 
     def deinit(self):
+        from rotaryio import IncrementalEncoder
+        from adafruit_debouncer import Debouncer
+
         self._encoder.deinit()
+        del self._encoder
+        del self._button
+        del self._button_pin
