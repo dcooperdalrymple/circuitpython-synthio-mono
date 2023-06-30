@@ -534,6 +534,7 @@ midi.set_pitch_bend(pitch_bend)
 
 midi.init()
 
+loop_delay = config.get("loop_update", 0.01)
 while True:
     arpeggiator.update()
     midi.update()
@@ -541,6 +542,8 @@ while True:
 
     encoder.update()
     display.update()
+
+    time.sleep(loop_delay)
 
 print("\n:: Deinitializing ::")
 
