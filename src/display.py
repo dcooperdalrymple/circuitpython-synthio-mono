@@ -1,6 +1,6 @@
 class Display:
     def __init__(self, update=0.2):
-        self._update = update
+        self._delay = update
         self._now = 0
         self._queued = None
     def set_title(self, text):
@@ -15,10 +15,11 @@ class Display:
         self._queued = (title, group, value)
     def update(self):
         now = time.monotonic()
-        if now < self._now + self._update:
+        if now < self._now + self._delay:
             return
         self._now = now
-
+        self._update()
+    def _update(self):
         if self._queued:
             self.set_title(self._queued[0])
             self.set_group(self._queued[1])
