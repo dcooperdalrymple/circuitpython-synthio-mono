@@ -22,12 +22,13 @@ upload: clean $(LIB_MPY) lib src patches waveforms
 
 update: clean $(LIB_MPY) mpy_update src
 
-lib: $(LIBDIR)/*.mpy
+lib: $(LIBDIR)/*
 	@mkdir -p $(DEVICE)$(LIBDIR) || true
 	@for file in $^ ; do \
 		echo $${file} "=>" $(DEVICE)$${file} ; \
 		cp $${file} $(DEVICE)$${file} -r ; \
 	done
+	@rm $(DEVICE)$(LIB_PY) || true
 
 src: $(SRCS)
 	@for file in $^ ; do \
