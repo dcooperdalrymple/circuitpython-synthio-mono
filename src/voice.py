@@ -179,6 +179,7 @@ class Voice:
 
         self._min_filter_frequency = min_filter_frequency
         self._max_filter_frequency = max_filter_frequency
+        self._filter_buffer = ("", 0.0, 0.0)
 
         self.oscillators = (Oscillator(self._synth, waveforms), Oscillator(self._synth, waveforms))
 
@@ -238,6 +239,10 @@ class Voice:
         type = self.get_filter_type()
         frequency = min(max(self.get_filter_frequency() + self.filter_envelope.get_value(), self._min_filter_frequency), self._max_filter_frequency)
         resonance = self.get_filter_resonance()
+
+        if self._filter_buffer[0] == type and self._filter_buffer[1] == frequency and self._filter_buffer[2] == resonance:
+            return
+        self._filter_buffer = (type, frequency, resonance)
 
         filter = self._synth.build_filter(type, frequency, resonance)
         for oscillator in self.oscillators:
