@@ -57,9 +57,13 @@ audio = Audio(
 )
 
 print("\n:: Initializing Synthio ::")
-synth = Synth(audio)
 min_filter_frequency=config.get(("oscillator", "filter", "min_frequency"), 60.0)
 max_filter_frequency=min(audio.get_sample_rate()*0.45, config.get(("oscillator", "filter", "max_frequency"), 20000.0))
+synth = Synth(
+    audio,
+    min_filter_frequency=min_filter_frequency,
+    max_filter_frequency=max_filter_frequency
+)
 
 print("\n:: Building Waveforms ::")
 waveforms = Waveforms(

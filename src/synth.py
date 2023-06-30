@@ -1,5 +1,5 @@
 class Synth:
-    def __init__(self, audio):
+    def __init__(self, audio, min_filter_frequency=60.0, max_filter_frequency=20000.0):
         import synthio
 
         self._synth = synthio.Synthesizer(
@@ -8,11 +8,14 @@ class Synth:
         )
         audio.play(self._synth)
 
+        self._min_filter_frequency = min_filter_frequency
+        self._max_filter_frequency = max_filter_frequency
         self._filter_types = ["lpf", "hpf", "bpf"]
 
     def get_filter_types(self):
         return self._filter_types
     def build_filter(self, type, frequency, resonance):
+        frequency = min(max(frequency, self._min_filter_frequency), self._max_filter_frequency)
         if type == "lpf":
             return self._synth.low_pass_filter(frequency, resonance)
         elif type == "hpf":
