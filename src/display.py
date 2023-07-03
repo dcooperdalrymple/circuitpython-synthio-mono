@@ -3,6 +3,9 @@ class Display:
         self._delay = update
         self._now = 0
         self._queued = None
+        self._cursor = False
+        self._cursor_pos = (0,0)
+        self._cursor_visible = False
     def set_title(self, text):
         pass
     def set_group(self, text):
@@ -11,6 +14,11 @@ class Display:
         pass
     def set_selected(self, value):
         pass
+    def show_cursor(self, column=0, row=0):
+        self._cursor = True
+        self._cursor_pos = (column, row)
+    def hide_cursor(self):
+        self._cursor = False
     def queue(self, title, group, value):
         self._queued = (title, group, value)
     def update(self, now=None):
@@ -21,11 +29,16 @@ class Display:
         self._now = now
         self._update()
     def _update(self):
+        if self._cursor:
+            self._cursor_visible = not self._cursor_visible
+        self._update_cursor()
         if self._queued:
             self.set_title(self._queued[0])
             self.set_group(self._queued[1])
             self.set_value(self._queued[2])
             self._queued = None
+    def _update_cursor(self):
+        pass
     def deinit(self):
         del self._queued
         pass
@@ -35,6 +48,7 @@ class DisplaySSD1306(Display):
         from busio import I2C
         import displayio, adafruit_displayio_ssd1306, terminalio
         from adafruit_display_text import label
+        from adafruit_display_shapes.rect import Rect
 
         # Release REPL
         displayio.release_displays()
@@ -95,6 +109,15 @@ class DisplaySSD1306(Display):
         )
         self._group.append(self._value_label)
 
+        self._cursor = Rect(
+            x=0,
+            y=0,
+            width=8,
+            height=2,
+            fill=None
+        )
+        self._group.append(self._cursor)
+
         super().__init__(update)
     def set_title(self, text):
         self._title_label.text = str(text)
@@ -111,6 +134,15 @@ class DisplaySSD1306(Display):
         else:
             self._title_label.color = 0xFFFFFF
             self._title_label.background_color = 0x000000
+    def _update_cursor(self):
+        if not self._cursor:
+            return
+        if self._cursor_visible:
+            self._cursor.fill = 0xFFFFFF
+            self._cursor.x = self._cursor_pos[0]*8
+            self._cursor.y = (self._cursor_pos[1]+1)*8-self._cursor.height
+        else:
+            self._cursor.fill = None
     def deinit(self):
         from busio import I2C
         import displayio, adafruit_displayio_ssd1306, terminalio
@@ -178,10 +210,12 @@ class DisplayCharacterLCD(Display):
         lcd.cursor_position(column, row)
         lcd.message = truncate_str(str(value), length, right_aligned)
         lcd.cursor_position(self._select_pos[0], self._select_pos[1])
-    def deinit(self):
-        from adafruit_character_lcd.character_lcd import Character_LCD_Mono
-        import adafruit_mcp230xx, adafruit_74hc595, adafruit_bus_device
+    def _update_cursor(self):
+        if not self._cursor:
+            return
+        self._lcd.cursor_position(self._cursor_pos[0], self._cursor_pos[1])
 
+    def deinit(self):
         del self._select_pos
         del self._lcd
         del self._rs
