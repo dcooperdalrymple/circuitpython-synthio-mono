@@ -148,7 +148,9 @@ def unmap_dict(value, dict):
 
 # Strings
 
-def truncate_str(self, value, length, right_aligned=False):
+def truncate_str(value, length, right_aligned=False):
+    if not type(value) is str:
+        value = str(value)
     if len(value) > length:
         value = value[:length]
     elif len(value) < length:

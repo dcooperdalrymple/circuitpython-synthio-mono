@@ -7,11 +7,15 @@
         "update": 0.05
     },
     "display": {
-        "type": "ssd1306_128x32",
-        "address": 60,
-        "scl": "GP21",
-        "sda": "GP20",
-        "speed": 1000000,
+        "type": "1602",
+        "rs": "GP17",
+        "en": "GP18",
+        "d4": "GP19",
+        "d5": "GP20",
+        "d6": "GP21",
+        "d7": "GP22",
+        "vo": "GP16",
+        "contrast": 0.25,
         "update": 0.2
     },
     "encoder": {
