@@ -29,6 +29,8 @@ class Patches:
         if not filename:
             return None
         return self._dir + "/" + filename
+    def get_list(self):
+        return self._items
 
     def remove(self, index):
         path = self._get_path(index)

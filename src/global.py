@@ -1,6 +1,6 @@
 # Modules
 
-import gc, os, sys, time, math, random, board
+import gc, os, sys, time, math, random, board, string
 import ulab.numpy as numpy
 import synthio
 from audiomixer import Mixer

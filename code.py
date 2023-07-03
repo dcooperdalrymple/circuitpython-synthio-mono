@@ -105,6 +105,15 @@ parameters.add_parameters([
 
     # Global
     Parameter(
+        name="patch",
+        label="Patch",
+        group="global",
+        range=patches.get_list(),
+        set_callback=patches.read
+        mod=False,
+        patch=False
+    ),
+    Parameter(
         name="midi_channel",
         label="MIDI Channel",
         group="global",
@@ -514,7 +523,9 @@ print("\n:: Setting Up Menu ::")
 menu = Menu(parameters, display)
 encoder.set_increment(menu.increment)
 encoder.set_decrement(menu.decrement)
-encoder.set_release(menu.toggle)
+encoder.set_press(menu.toggle_select)
+encoder.set_long_press(menu.toggle_save)
+encoder.set_double_press(menu.confirm_save)
 
 print("\n:: Initialization Complete ::")
 display.set_value("Ready!")
