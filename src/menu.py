@@ -84,7 +84,7 @@ class Menu:
         if self._saving:
             if self._saving_index == 0:
                 self._save_index = (self._save_index + 1) % 100
-            elif self._saving_index = 1 < len(self._save_name):
+            elif self._saving_index - 1 < len(self._save_name):
                 i = self._letters.index(self._save_name[self._saving_index-1])
                 self._save_name[self._saving_index-1] = letters[i+1]
         elif self._selected and self._item:
@@ -98,7 +98,7 @@ class Menu:
         if self._saving:
             if self._saving_index == 0:
                 self._save_index = (self._save_index - 1) % 100
-            elif self._saving_index = 1 < len(self._save_name):
+            elif self._saving_index - 1 < len(self._save_name):
                 i = self._letters.index(self._save_name[self._saving_index-1])
                 self._save_name[self._saving_index-1] = letters[i-1]
         elif self._selected and self._item:
