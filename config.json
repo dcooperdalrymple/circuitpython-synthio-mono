@@ -17,8 +17,7 @@
     "encoder": {
         "a": "GP12",
         "b": "GP13",
-        "btn": "GP7",
-        "update": 0.1
+        "btn": "GP7"
     },
     "audio": {
         "rate": 22050,

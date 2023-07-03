@@ -1,11 +1,6 @@
-import time
-
 class Encoder:
 
-    def __init__(self, pin_a, pin_b, pin_button, update=0.1):
-        self._update = 0.1
-        self._now = 0.0
-
+    def __init__(self, pin_a, pin_b, pin_button):
         self._encoder = IncrementalEncoder(pin_a, pin_b)
         self._position = None
         self._button_pin = DigitalInOut(pin_button)
@@ -26,13 +21,7 @@ class Encoder:
     def set_release(self, callback):
         self._release = callback
 
-    def update(self, now=None):
-        if not now:
-            now = time.monotonic()
-        if now < self._now + self._update:
-            return
-        self._now = now
-
+    def update(self):
         position = self._encoder.position
         if not self._position is None and position != self._position:
             p = position

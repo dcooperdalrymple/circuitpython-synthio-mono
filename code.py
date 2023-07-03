@@ -550,12 +550,11 @@ midi.set_pitch_bend(pitch_bend)
 midi.init()
 
 while True:
-    voice.update()
-
     now = time.monotonic()
+    voice.update()
+    encoder.update()
     arpeggiator.update(now)
     midi.update(now)
-    encoder.update(now)
     display.update(now)
 
 print("\n:: Deinitializing ::")
