@@ -6,11 +6,13 @@ class Encoder:
         self._button_pin = DigitalInOut(pin_button)
         self._button_pin.direction = Direction.INPUT
         self._button_pin.pull = Pull.UP
-        self._button = Debouncer(self._button_pin)
+        self._button = Button(self._button_pin, value_when_press=False)
         self._increment = None
         self._decrement = None
         self._press = None
         self._release = None
+        self._long_press = None
+        self._double_press = None
 
     def set_increment(self, callback):
         self._increment = callback
@@ -20,6 +22,10 @@ class Encoder:
         self._press = callback
     def set_release(self, callback):
         self._release = callback
+    def set_long_press(self, callback):
+        self._long_press = callback
+    def set_double_press(self, callback):
+        self._double_press = callback
 
     def update(self):
         position = self._encoder.position
@@ -34,10 +40,16 @@ class Encoder:
                     p=p+1
                     self._decrement()
         self._position = position
+
         self._button.update()
-        if self._button.fell and self._press:
-            self._press()
-        elif self._button.rose and self._release:
+        if self._button.pressed:
+            if self._button.short_count >= 2 and self._double_press:
+                self._double_press()
+            elif self._press:
+                self._press()
+        if self._button.long_press and self._long_press:
+            self._long_press()
+        if self._button.released and self._release:
             self._release()
 
     def deinit(self):

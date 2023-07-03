@@ -15,7 +15,7 @@ from adafruit_midi.pitch_bend import PitchBend
 
 from digitalio import DigitalInOut, Direction, Pull
 from rotaryio import IncrementalEncoder
-from adafruit_debouncer import Debouncer
+from adafruit_debouncer import Button
 
 def free_module(mod):
     if type(mod) is tuple:
