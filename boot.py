@@ -5,7 +5,7 @@
 
 # Disable write protection
 import storage
-storage.remount("/", False, True)
+storage.remount("/", False, disable_concurrent_write_protection=True)
 
 # Create directories
 import os
