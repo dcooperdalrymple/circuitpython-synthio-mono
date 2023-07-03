@@ -22,6 +22,8 @@ upload: clean $(LIB_MPY) lib src patches waveforms
 
 update: clean $(LIB_MPY) mpy_update src
 
+compile: clean $(LIB_MPY)
+
 lib: $(LIBDIR)/*
 	@mkdir -p $(DEVICE)$(LIBDIR) || true
 	@for file in $^ ; do \
