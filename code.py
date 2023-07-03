@@ -92,6 +92,7 @@ arpeggiator.set_release(release)
 
 print("\n:: Routing Parameters ::")
 parameters = Parameters()
+patches = Patches(parameters)
 
 parameters.add_groups([
     ParameterGroup("global", "Global"),
@@ -109,7 +110,7 @@ parameters.add_parameters([
         label="Patch",
         group="global",
         range=patches.get_list(),
-        set_callback=patches.read
+        set_callback=patches.read,
         mod=False,
         patch=False
     ),
@@ -515,17 +516,16 @@ parameters.add_parameters([
 config.deinit()
 gc.collect()
 
-print("\n:: Reading Patches ::")
-patches = Patches(parameters)
+print("\n:: Loading Initial Patch ::")
 patches.read_first()
 
 print("\n:: Setting Up Menu ::")
-menu = Menu(parameters, display)
+menu = Menu(parameters, display, patches)
 encoder.set_increment(menu.increment)
 encoder.set_decrement(menu.decrement)
-encoder.set_press(menu.toggle_select)
+encoder.set_click(menu.toggle_select)
 encoder.set_long_press(menu.toggle_save)
-encoder.set_double_press(menu.confirm_save)
+encoder.set_double_click(menu.confirm_save)
 
 print("\n:: Initialization Complete ::")
 display.set_value("Ready!")

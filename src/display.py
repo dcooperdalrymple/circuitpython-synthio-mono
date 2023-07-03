@@ -5,7 +5,6 @@ class Display:
         self._queued = None
         self._cursor = False
         self._cursor_pos = (0,0)
-        self._cursor_visible = False
     def set_title(self, text):
         pass
     def set_group(self, text):
@@ -19,23 +18,24 @@ class Display:
         self._cursor_pos = (column, row)
     def hide_cursor(self):
         self._cursor = False
+    def set_save_index(self, i):
+        pass
     def queue(self, title, group, value):
         self._queued = (title, group, value)
     def update(self, now=None):
-        if not now:
-            now = time.monotonic()
-        if now < self._now + self._delay:
-            return
+        if self._delay > 0.0:
+            if not now:
+                now = time.monotonic()
+            if now < self._now + self._delay:
+                return
         self._now = now
         self._update()
     def _update(self):
-        if self._cursor:
-            self._cursor_visible = not self._cursor_visible
-        self._update_cursor()
         if self._queued:
             self.set_title(self._queued[0])
             self.set_group(self._queued[1])
             self.set_value(self._queued[2])
+            self._update_cursor()
             self._queued = None
     def _update_cursor(self):
         pass
@@ -109,6 +109,7 @@ class DisplaySSD1306(Display):
         )
         self._group.append(self._value_label)
 
+        self._cursor_visible = False
         self._cursor = Rect(
             x=0,
             y=0,
@@ -134,6 +135,11 @@ class DisplaySSD1306(Display):
         else:
             self._title_label.color = 0xFFFFFF
             self._title_label.background_color = 0x000000
+    def _update(self):
+        if self._cursor:
+            self._cursor_visible = not self._cursor_visible
+        self._update_cursor()
+        super()._update()
     def _update_cursor(self):
         if not self._cursor:
             return
@@ -195,8 +201,6 @@ class DisplayCharacterLCD(Display):
         self._lcd.cursor = False
         self._lcd.text_direction = self._lcd.LEFT_TO_RIGHT
 
-        self._select_pos = (0, self._columns-1)
-
         super().__init__(0.0)
     def set_selected(self, value):
         if value:
@@ -205,15 +209,19 @@ class DisplayCharacterLCD(Display):
         else:
             self._lcd.cursor = False
             self._lcd.blink = False
-    def _reset_cursor(self):
-        pass
+    def _update_cursor(self):
+        if not self._cursor:
+            self._lcd.cursor = False
+            self._lcd.blink = False
+        else:
+            self._lcd.cursor = True
+            self._lcd.blink = True
+            self._lcd.cursor_position(self._cursor_pos[0], self._cursor_pos[1])
     def set_contrast(self, value):
         if not self._vo:
             return
         value = min(max(value, 0.0), 1.0)
         self._vo.duty_cycle = int((2**16-1)*value)
-    def update(self, now=None):
-        self._update() # Force update (no delay)
     def _write(self, value, length=None, right_aligned=False, column=0, row=0):
         if not length:
             length = self._columns
@@ -221,10 +229,8 @@ class DisplayCharacterLCD(Display):
             value = "{:.2f}".format(value)
         self._lcd.cursor_position(column, row)
         self._lcd.message = truncate_str(str(value), length, right_aligned)
-        self._lcd.cursor_position(self._select_pos[0], self._select_pos[1])
-        self._reset_cursor()
+        self._update_cursor()
     def deinit(self):
-        del self._select_pos
         del self._lcd
         del self._rs
         del self._en
@@ -244,8 +250,11 @@ class DisplayCharacterLCD_1602(DisplayCharacterLCD):
         self._write(text, 6, True, self._columns-6, 0)
     def set_value(self, text):
         self._write(text, self._columns, False, 0, 1)
-    def _reset_cursor(self):
-        self._lcd.cursor_position(0, 1)
+    def set_save_index(self, i):
+        if i == 0:
+            self.show_cursor(self._columns-2, 0)
+        else:
+            self.show_cursor((i-1)%self._columns, 1)
 
 class DisplayCharacterLCD_1604(DisplayCharacterLCD):
     def __init__(self, rs, en, d4, d5, d6, d7):
@@ -256,8 +265,11 @@ class DisplayCharacterLCD_1604(DisplayCharacterLCD):
         self._write(text, row=0)
     def set_value(self, text):
         self._write(text, row=3)
-    def _reset_cursor(self):
-        self._lcd.cursor_position(0, 3)
+    def set_save_index(self, i):
+        if i == 0:
+            self.show_cursor(0, 0)
+        else:
+            self.show_cursor((i-1)%self._columns, 3)
 
 def get_display(config):
     type = config.get(("display", "type"), "ssd1306_128x32")

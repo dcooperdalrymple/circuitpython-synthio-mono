@@ -14,9 +14,9 @@ class Menu:
         self._selected = False
         self._saving = False
         self._saving_index = 0 # 0 is index, 1+ is name
-        self._save_name = " "*16
+        self._save_name = [" " for i in range(16)]
         self._save_index = 0
-        self._characters = " "+ string.letters + string.digits + "!-_#$%&+@~^"
+        self._characters = " abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!-_#$%&+@~^"
 
     def _get_item_by_index(self, group_index, parameter_index):
         group_index = group_index % self._parameters.get_group_count()
@@ -42,7 +42,8 @@ class Menu:
 
     def _queue(self):
         if self._saving:
-            self._display.queue("Save Patch", self._save_index, self._save_name)
+            self._display.queue("Save Patch", "{:02d}".format(self._save_index), "".join(self._save_name))
+            self._display.set_save_index(self._saving_index)
         else:
             if not self._item:
                 return False
@@ -84,9 +85,11 @@ class Menu:
         if self._saving:
             if self._saving_index == 0:
                 self._save_index = (self._save_index + 1) % 100
+                return self._queue()
             elif self._saving_index - 1 < len(self._save_name):
-                i = self._letters.index(self._save_name[self._saving_index-1])
-                self._save_name[self._saving_index-1] = letters[i+1]
+                i = self._characters.index(self._save_name[self._saving_index-1])
+                self._save_name[self._saving_index-1] = self._characters[(i+1)%len(self._characters)]
+                return self._queue()
         elif self._selected and self._item:
             if self._item.parameter.increment():
                 return self._queue()
@@ -98,9 +101,11 @@ class Menu:
         if self._saving:
             if self._saving_index == 0:
                 self._save_index = (self._save_index - 1) % 100
+                return self._queue()
             elif self._saving_index - 1 < len(self._save_name):
-                i = self._letters.index(self._save_name[self._saving_index-1])
-                self._save_name[self._saving_index-1] = letters[i-1]
+                i = self._characters.index(self._save_name[self._saving_index-1])
+                self._save_name[self._saving_index-1] = self._characters[i-1]
+                return self._queue()
         elif self._selected and self._item:
             if self._item.parameter.decrement():
                 return self._queue()
@@ -112,6 +117,7 @@ class Menu:
     def toggle_select(self):
         if self._saving:
             self._saving_index = (self._saving_index + 1) % 17 # max string length is 16
+            return self._queue()
         elif self._selected:
             self.deselect()
         else:
@@ -129,7 +135,7 @@ class Menu:
         if not self._saving:
             parameter = self._parameters.get_parameter("patch")
             self._save_index = parameter.get_formatted_value(False)
-            self._save_name = truncate_str(parameter.get_formatted_value(True), 16)
+            self._save_name = [i for i in truncate_str(self._patches.get_name(self._save_index), 16)]
             self._saving = True
             self._saving_index = 0
         else:
@@ -137,10 +143,10 @@ class Menu:
         self._queue()
         self._display.set_selected(self._saving)
     def confirm_save(self):
-        if not self._saving or not self._save_name.strip():
+        if not self._saving or not "".join(self._save_name).strip():
             return
         self._save_index = self._save_index % 100
-        self._patches.save(self._save_index, self._save_name)
+        self._patches.save(self._save_index, "".join(self._save_name))
         self._saving = False
         self._queue()
         self._display.set_selected(self._saving)
@@ -149,4 +155,5 @@ class Menu:
         del self._parameters
         del self._display
         del self._item
-chr(ord(self._save_char) - 1)
+        del self._save_name
+        del self._characters

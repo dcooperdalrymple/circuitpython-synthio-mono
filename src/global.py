@@ -1,6 +1,6 @@
 # Modules
 
-import gc, os, sys, time, math, random, board, string
+import gc, os, sys, time, math, random, board
 import ulab.numpy as numpy
 import synthio
 from audiomixer import Mixer
@@ -60,16 +60,6 @@ def save_json(path, data):
     free_module(json)
     del json
     return result
-
-# Files
-
-def slugify(value):
-    import re
-    value = re.sub(r'[^\w\s-]', '', value.lower())
-    value = re.sub(r'[-\s]+', '-', value).strip('-_')
-    free_module(re)
-    del re
-    return value
 
 # Mapping
 

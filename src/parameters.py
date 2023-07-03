@@ -73,16 +73,16 @@ class Parameter:
                     return value.name
         return self.format_value
     def get_steps(self):
+        steps = 20
         if type(self.range) is dict or type(self.range) is list:
-            return len(self.range)-1
+            steps = len(self.range)-1
         elif type(self.range) is bool:
-            return 1
+            steps = 1
         elif type(self.range) is tuple and len(self.range) == 2 and type(self.range[0]) is int:
-            return self.range[1] - self.range[0] + 1
+            steps = self.range[1] - self.range[0] + 1
         elif type(self.range) is int: # +/- linear range
-            return self.range * 2 + 1
-        else:
-            return 20
+            steps = self.range * 2 + 1
+        return max(steps, 1)
     def get_step_size(self):
         return 1.0/self.get_steps()
     def increment(self):

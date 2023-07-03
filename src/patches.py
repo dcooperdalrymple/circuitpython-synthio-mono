@@ -18,22 +18,27 @@ class Patches:
         except:
             return []
 
-    def _get_filename(self, index):
+    def get_filename(self, index):
         if type(index) is str and index.isdigit():
             index = int(index)
         if not type(index) is int or index > 99 or not self._items or not index in self._items:
             return None
         return self._items[index]
-    def _get_path(self, index):
-        filename = self._get_filename(index)
+    def get_path(self, index):
+        filename = self.get_filename(index)
         if not filename:
             return None
         return self._dir + "/" + filename
+    def get_name(self, index):
+        filename = self.get_filename(index)
+        if not filename:
+            return ""
+        return filename[3:-5]
     def get_list(self):
         return self._items
 
     def remove(self, index):
-        path = self._get_path(index)
+        path = self.get_path(index)
         if not path:
             return False
         try:
@@ -42,7 +47,7 @@ class Patches:
         except:
             return False
     def read(self, index):
-        path = self._get_path(index)
+        path = self.get_path(index)
         if not path:
             return False
         data = read_json(path)
@@ -55,17 +60,23 @@ class Patches:
                 parameter.set(data["parameters"][name])
         return True
     def save(self, index=0, name="Patch"):
+        index = index % 100
+        name = name.strip()
         data = {
             "index": 0,
             "name": name,
             "parameters": {},
         }
-        for parameter in self._parameters.items:
+        for parameter in self._parameters.get_parameters():
             if parameter.patch:
-                data["parameters"][parameter.name] = parameter.get()
-        remove_patch(index)
-        path = "/patches/{:02d}-{}.json".format(index, slugify(name))
-        return save_json(path, data)
+                data["parameters"][parameter.name] = parameter.get_formatted_value(True)
+        self.remove(index)
+        filename = "{:02d}-{}.json".format(index, name)
+        path = self._dir + "/" + filename)
+        if not save_json(path, data):
+            return False
+        self._items[index] = filename
+        return True
     def read_first(self):
         return self.read(0)
 
