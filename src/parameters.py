@@ -152,8 +152,19 @@ class Parameters:
             return self._items[value]
         return None
 
-    def get_mod_parameters(self):
-        return self._mod_parameters
+    def get_mod_parameters(self, format=False):
+        if not format:
+            return self._mod_parameters
+        else:
+            parameters = {}
+            for name in self._mod_parameters:
+                parameter = self.get_parameter(name)
+                if name[-2] == "_" and name[-1].isdigit():
+                    group = self.get_group(parameter.group)
+                    parameters[name] = group.label + " " + parameter.label
+                else:
+                    parameters[name] = parameter.label
+            return parameters
     def get_mod_parameter(self):
         if not self._mod_parameters:
             return "volume"

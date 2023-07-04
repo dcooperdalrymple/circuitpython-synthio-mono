@@ -173,8 +173,8 @@ parameters.add_parameters([
         name="mod_parameter",
         label="Mod Wheel",
         group="global",
-        range=parameters.get_mod_parameters(),
-        set_callback=parameters.set_mod_parameter
+        set_callback=parameters.set_mod_parameter,
+        mod=False
     ),
 
     # Arpeggiator
@@ -513,6 +513,7 @@ parameters.add_parameters([
         set_callback=voice.oscillators[1].set_pan_depth
     )
 ])
+parameters.get_parameter("mod_parameter").range = parameters.get_mod_parameters(True)
 config.deinit()
 gc.collect()
 
