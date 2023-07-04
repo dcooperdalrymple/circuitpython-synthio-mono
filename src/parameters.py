@@ -12,7 +12,7 @@ class Parameter:
         self.patch = patch
         self.set(value)
     def set(self, value):
-        if type(value) is str:
+        if type(value) is str or type(value) is int:
             if type(self.range) is dict:
                 value = unmap_dict(value, self.range)
             elif type(self.range) is list:
@@ -55,9 +55,7 @@ class Parameter:
     def get_formatted_value(self, translate=True):
         if translate:
             value = None
-            if type(self.range) is dict:
-                value = list(self.range)[self.format_value]
-            elif type(self.range) is list:
+            if type(self.range) is dict or type(self.range) is list:
                 value = self.range[self.format_value]
             if value:
                 if type(value) is str:

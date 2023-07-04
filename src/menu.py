@@ -138,10 +138,11 @@ class Menu:
             self._save_name = [i for i in truncate_str(self._patches.get_name(self._save_index), 16)]
             self._saving = True
             self._saving_index = 0
+            self._display.set_save_index(self._saving_index)
         else:
             self._saving = False
+            self._display.set_selected(False)
         self._queue()
-        self._display.set_selected(self._saving)
     def confirm_save(self):
         if not self._saving or not "".join(self._save_name).strip():
             return

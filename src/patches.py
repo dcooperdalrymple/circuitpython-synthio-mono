@@ -72,10 +72,13 @@ class Patches:
                 data["parameters"][parameter.name] = parameter.get_formatted_value(True)
         self.remove(index)
         filename = "{:02d}-{}.json".format(index, name)
-        path = self._dir + "/" + filename)
+        path = self._dir + "/" + filename
         if not save_json(path, data):
             return False
         self._items[index] = filename
+        parameter = self._parameters.get_parameter("patch")
+        parameter.range = self.get_list()
+        parameter.set(index)
         return True
     def read_first(self):
         return self.read(0)
