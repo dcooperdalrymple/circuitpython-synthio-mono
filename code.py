@@ -28,8 +28,8 @@ config = Config()
 
 print("\n:: Initializing Display ::")
 display = get_display(config)
-display.set_title("circuitpython-synthio-mono v1.0")
-display.set_value("Loading...")
+display.set_value("synthio-mono")
+display.set_title("Loading...")
 
 print("\n:: Initializing Encoder ::")
 encoder = Encoder(
@@ -116,7 +116,7 @@ parameters.add_parameters([
     ),
     Parameter(
         name="midi_channel",
-        label="MIDI Channel",
+        label="MIDI Chan",
         group="global",
         range=(config.get(("midi", "min_channel"), 0), config.get(("midi", "max_channel"), 15)),
         set_callback=midi.set_channel,
@@ -156,13 +156,13 @@ parameters.add_parameters([
     ),
     Parameter(
         name="velocity_amount",
-        label="Velocity Amount",
+        label="Velocity",
         group="global",
         set_callback=voice.set_velocity_amount
     ),
     Parameter(
         name="bend_amount",
-        label="Bend Amount",
+        label="Pitch Bend",
         group="global",
         range=config.get(("oscillator", "max_bend"), 1.0),
         value=1.0,
@@ -180,7 +180,7 @@ parameters.add_parameters([
     # Arpeggiator
     Parameter(
         name="arp_enabled",
-        label="Arpeggiator",
+        label="Enabled",
         group="arp",
         range=True,
         set_callback=arpeggiator.set_enabled,
@@ -210,7 +210,7 @@ parameters.add_parameters([
     ),
     Parameter(
         name="arp_steps",
-        label="Steps Per Beat",
+        label="Beat Step",
         group="arp",
         range=arpeggiator.get_step_options(),
         set_callback=arpeggiator.set_step_option
@@ -256,34 +256,34 @@ parameters.add_parameters([
     ),
     Parameter(
         name="filter_envelope_attack_time",
-        label="Filter Env Attack",
+        label="FltrEnvAtk",
         group="voice",
         range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
         set_callback=voice.set_filter_attack_time
     ),
     Parameter(
         name="filter_envelope_release_time",
-        label="Filter Env Release",
+        label="FltrEnvDcy",
         group="voice",
         range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
         set_callback=voice.set_filter_release_time
     ),
     Parameter(
         name="filter_envelope_amount",
-        label="Filter Env Amount",
+        label="FltrEnvAmt",
         group="voice",
         range=(0.0, max_filter_frequency-min_filter_frequency),
         set_callback=voice.set_filter_amount
     ),
     Parameter(
         name="filter_lfo_rate",
-        label="Filter Lfo Rate",
+        label="FltrLfoSpd",
         group="voice",
         set_callback=voice.set_filter_lfo_rate
     ),
     Parameter(
         name="filter_lfo_depth",
-        label="Filter Lfo Depth",
+        label="FltrLfoAmt",
         group="voice",
         range=(0.0, (max_filter_frequency-min_filter_frequency)/2),
         set_callback=voice.set_filter_lfo_depth
@@ -299,35 +299,35 @@ parameters.add_parameters([
     ),
     Parameter(
         name="attack_time",
-        label="Attack Time",
+        label="Attack",
         group="voice",
         range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
         set_callback=voice.set_envelope_attack_time
     ),
     Parameter(
         name="decay_time",
-        label="Decay Time",
+        label="Decay",
         group="voice",
         range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
         set_callback=voice.set_envelope_decay_time
     ),
     Parameter(
         name="release_time",
-        label="Release Time",
+        label="Release",
         group="voice",
         range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
         set_callback=voice.set_envelope_release_time
     ),
     Parameter(
         name="attack_level",
-        label="Attack Level",
+        label="Attack Lvl",
         group="voice",
         value=1.0,
         set_callback=voice.set_envelope_attack_level
     ),
     Parameter(
         name="sustain_level",
-        label="Sustain Level",
+        label="Decay Lvl",
         group="voice",
         value=1.0,
         set_callback=voice.set_envelope_sustain_level
@@ -343,7 +343,7 @@ parameters.add_parameters([
     ),
     Parameter(
         name="bend_amount_0",
-        label="Bend Amount",
+        label="Pitch Bend",
         group="osc0",
         range=config.get(("oscillator", "max_bend"), 1.0),
         value=1.0,
@@ -365,7 +365,7 @@ parameters.add_parameters([
     ),
     Parameter(
         name="coarse_tune_0",
-        label="Coarse Tune",
+        label="CoarseTune",
         group="osc0",
         range=config.get(("oscillator", "max_coarse_tune"), 2.0),
         value=0.5,
@@ -381,25 +381,25 @@ parameters.add_parameters([
     ),
     Parameter(
         name="tremolo_rate_0",
-        label="Tremolo Rate",
+        label="Trem Rate",
         group="osc0",
         set_callback=voice.oscillators[0].set_tremolo_rate
     ),
     Parameter(
         name="tremolo_depth_0",
-        label="Tremolo Depth",
+        label="Trem Depth",
         group="osc0",
         set_callback=voice.oscillators[0].set_tremolo_depth
     ),
     Parameter(
         name="vibrato_rate_0",
-        label="Vibrato Rate",
+        label="Vib Rate",
         group="osc0",
         set_callback=voice.oscillators[0].set_vibrato_rate
     ),
     Parameter(
         name="vibrato_depth_0",
-        label="Vibrato Depth",
+        label="Vib Depth",
         group="osc0",
         set_callback=voice.oscillators[0].set_vibrato_depth
     ),
@@ -412,13 +412,13 @@ parameters.add_parameters([
     ),
     Parameter(
         name="pan_rate_0",
-        label="Panning Rate",
+        label="Pan Rate",
         group="osc0",
         set_callback=voice.oscillators[0].set_pan_rate
     ),
     Parameter(
         name="pan_depth_0",
-        label="Panning Depth",
+        label="Pan Depth",
         group="osc0",
         set_callback=voice.oscillators[0].set_pan_depth
     ),
@@ -433,7 +433,7 @@ parameters.add_parameters([
     ),
     Parameter(
         name="bend_amount_1",
-        label="Bend Amount",
+        label="Pitch Bend",
         group="osc1",
         range=config.get(("oscillator", "max_bend"), 1.0),
         value=1.0,
@@ -455,7 +455,7 @@ parameters.add_parameters([
     ),
     Parameter(
         name="coarse_tune_1",
-        label="Coarse Tune",
+        label="CoarseTune",
         group="osc1",
         range=config.get(("oscillator", "max_coarse_tune"), 2.0),
         value=0.5,
@@ -471,25 +471,25 @@ parameters.add_parameters([
     ),
     Parameter(
         name="tremolo_rate_1",
-        label="Tremolo Rate",
+        label="Trem Rate",
         group="osc1",
         set_callback=voice.oscillators[1].set_tremolo_rate
     ),
     Parameter(
         name="tremolo_depth_1",
-        label="Tremolo Depth",
+        label="Trem Depth",
         group="osc1",
         set_callback=voice.oscillators[1].set_tremolo_depth
     ),
     Parameter(
         name="vibrato_rate_1",
-        label="Vibrato Rate",
+        label="Vib Rate",
         group="osc1",
         set_callback=voice.oscillators[1].set_vibrato_rate
     ),
     Parameter(
         name="vibrato_depth_1",
-        label="Vibrato Depth",
+        label="Vib Depth",
         group="osc1",
         set_callback=voice.oscillators[1].set_vibrato_depth
     ),
@@ -502,13 +502,13 @@ parameters.add_parameters([
     ),
     Parameter(
         name="pan_rate_1",
-        label="Panning Rate",
+        label="Pan Rate",
         group="osc1",
         set_callback=voice.oscillators[1].set_pan_rate
     ),
     Parameter(
         name="pan_depth_1",
-        label="Panning Depth",
+        label="Pan Depth",
         group="osc1",
         set_callback=voice.oscillators[1].set_pan_depth
     )
@@ -522,14 +522,17 @@ patches.read_first()
 
 print("\n:: Setting Up Menu ::")
 menu = Menu(parameters, display, patches)
+
+print("\n:: Initialization Complete ::")
+display.set_title("Ready!")
+time.sleep(1)
+
+menu.display("patch")
 encoder.set_increment(menu.increment)
 encoder.set_decrement(menu.decrement)
 encoder.set_click(menu.toggle_select)
 encoder.set_long_press(menu.toggle_save)
 encoder.set_double_click(menu.confirm_save)
-
-print("\n:: Initialization Complete ::")
-display.set_value("Ready!")
 
 def note_on(notenum, velocity):
     keyboard.append(notenum, velocity)

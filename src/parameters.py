@@ -159,7 +159,7 @@ class Parameters:
             parameters = {}
             for name in self._mod_parameters:
                 parameter = self.get_parameter(name)
-                if name[-2] == "_" and name[-1].isdigit():
+                if (name[-2] == "_" and name[-1].isdigit()) or parameters.group == "arp":
                     group = self.get_group(parameter.group)
                     parameters[name] = group.label + " " + parameter.label
                 else:
