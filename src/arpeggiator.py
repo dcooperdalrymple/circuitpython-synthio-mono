@@ -181,7 +181,7 @@ class Arpeggiator:
             now = time.monotonic()
 
         if now >= self._now + self._step_time:
-            self._now = now + self._step_time
+            self._now = self._now + self._step_time
             if self.get_type() == "random":
                 self._pos = random.randrange(0,len(self._notes),1)
             else:
