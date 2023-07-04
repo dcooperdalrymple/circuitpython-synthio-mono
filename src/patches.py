@@ -34,8 +34,14 @@ class Patches:
         if not filename:
             return ""
         return filename[3:-5]
-    def get_list(self):
-        return self._items
+    def get_list(self, format=True):
+        if not format:
+            return self._items
+        else:
+            items = {}
+            for index in self._items:
+                items[index] = "{:02d}:{}".format(index, self.get_name(index))
+            return items
 
     def remove(self, index):
         path = self.get_path(index)
