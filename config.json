@@ -8,30 +8,27 @@
     },
     "display": {
         "type": "1602",
-        "rs": "GP17",
-        "en": "GP18",
-        "d4": "GP19",
+        "rs": "GP27",
+        "en": "GP26",
+        "d4": "GP21",
         "d5": "GP20",
-        "d6": "GP21",
-        "d7": "GP22",
-        "vo": "GP16",
-        "contrast": 0.25,
-        "update": 0.2
+        "d6": "GP19",
+        "d7": "GP18",
+        "vo": "GP28",
+        "contrast": 0.25
     },
     "encoder": {
-        "a": "GP12",
-        "b": "GP13",
-        "btn": "GP7"
+        "a": "GP11",
+        "b": "GP12",
+        "btn": "GP13"
     },
     "audio": {
-        "rate": 22050,
-        "buffer": 4096,
+        "rate": 44100,
+        "buffer": 2048,
         "type": "i2s",
-        "clk": "GP0",
-        "ws": "GP1",
-        "data": "GP2",
-        "pwm_left": "GP0",
-        "pwm_right": "GP1"
+        "clk": "GP6",
+        "ws": "GP7",
+        "data": "GP8"
     },
     "arpeggiator": {
         "max_bpm": 240,

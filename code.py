@@ -33,15 +33,15 @@ display.set_title("Loading...")
 
 print("\n:: Initializing Encoder ::")
 encoder = Encoder(
-    pin_a=config.gpio(("encoder", "a"), "GP12"),
-    pin_b=config.gpio(("encoder", "b"), "GP13"),
-    pin_button=config.gpio(("encoder", "btn"), "GP7")
+    pin_a=config.gpio(("encoder", "a"), "GP11"),
+    pin_b=config.gpio(("encoder", "b"), "GP12"),
+    pin_button=config.gpio(("encoder", "btn"), "GP13")
 )
 
 print("\n:: Initializing Midi ::")
 midi = Midi(
-    uart_tx=config.gpio(("midi", "uart_tx")),
-    uart_rx=config.gpio(("midi", "uart_rx"))
+    uart_tx=config.gpio(("midi", "uart_tx"), "GP4"),
+    uart_rx=config.gpio(("midi", "uart_rx"), "GP5")
 )
 
 print("\n:: Initializing Audio ::")
