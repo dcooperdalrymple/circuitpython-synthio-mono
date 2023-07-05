@@ -317,7 +317,7 @@ class Voice:
         return self.filter_lfo.scale
 
     def _get_velocity_mod(self):
-        return 1.0 - (1.0 - self.velocity) * self.velocity_amount
+        return 1.0 - (1.0 - min(max(self.velocity, 0.0), 1.0)) * self.velocity_amount
     def _build_envelope(self):
         mod = self._get_velocity_mod()
         return synthio.Envelope(

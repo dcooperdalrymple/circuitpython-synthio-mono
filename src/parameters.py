@@ -159,16 +159,19 @@ class Parameters:
             parameters = {}
             for name in self._mod_parameters:
                 parameter = self.get_parameter(name)
-                if (name[-2] == "_" and name[-1].isdigit()) or parameters.group == "arp":
+                if (name[-2] == "_" and name[-1].isdigit()) or parameter.group == "arp":
                     group = self.get_group(parameter.group)
                     parameters[name] = group.label + " " + parameter.label
                 else:
                     parameters[name] = parameter.label
             return parameters
     def get_mod_parameter(self):
-        if not self._mod_parameters:
-            return "volume"
-        return self._mod_parameters[self._mod_parameter]
+        if self._mod_parameters and self._mod_parameter:
+            if type(self._mod_parameter) is str:
+                return self._mod_parameter
+            elif type(self._mod_parameter) is int:
+                return self._mod_parameters[self._mod_parameter]
+        return "volume"
     def set_mod_parameter(self, value):
         self._mod_parameter = value
 

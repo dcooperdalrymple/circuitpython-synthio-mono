@@ -141,8 +141,8 @@ class Arpeggiator:
             for octave in range(1,abs(self._octaves)+1):
                 if self._octaves < 0:
                     octave = octave * -1
-                    for i in range(0,l):
-                        notes.append((notes[i][0] + octave*12, notes[i][1]))
+                for i in range(0,l):
+                    notes.append((notes[i][0] + octave*12, notes[i][1]))
 
         type = self.get_type()
         if type == "up":
