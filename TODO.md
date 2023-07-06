@@ -1,12 +1,12 @@
 # TODO
 
-**Updated:** 2023-07-03
+**Updated:** 2023-07-06
 
 - LFO Waveforms
-- LFO Delay?
 - Polyphony?
 - Envelope retrigger
 - REAPER JSFX Controller Plugin
 - Dynamic waveform generation with pulse width modulation and lerping support
-- Separate file transfer mode to avoid audio interference
+- Use jumper to enable/disable usb file transfer
 - Use asyncio library for multitasking?
+- Replace config.json with settings.toml
