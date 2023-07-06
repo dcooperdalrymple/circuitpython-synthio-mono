@@ -98,11 +98,11 @@ parameters = Parameters()
 patches = Patches(parameters)
 
 parameters.add_groups([
-    ParameterGroup("global", "Global"),
-    ParameterGroup("arp", "Arp"),
-    ParameterGroup("voice", "Voice"),
-    ParameterGroup("osc0", "Osc 1"),
-    ParameterGroup("osc1", "Osc 2"),
+    ParameterGroup("global", "Global", False),
+    ParameterGroup("arp", "Arp", True),
+    ParameterGroup("voice", "Voice", False),
+    ParameterGroup("osc0", "Osc 1", True),
+    ParameterGroup("osc1", "Osc 2", True),
 ])
 
 parameters.add_parameters([
@@ -516,9 +516,10 @@ parameters.add_parameters([
         set_callback=voice.oscillators[1].set_pan_depth
     )
 ])
-parameters.get_parameter("mod_parameter").range = parameters.get_mod_parameters(True)
 config.deinit()
 gc.collect()
+
+parameters.get_parameter("mod_parameter").range = parameters.get_mod_parameters()
 
 print("\n:: Loading Initial Patch ::")
 patches.read_first()

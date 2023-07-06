@@ -56,7 +56,10 @@ class Parameter:
         if translate:
             value = None
             if type(self.range) is dict or type(self.range) is list:
-                value = self.range[self.format_value]
+                if type(self.format_value) is float:
+                    value = self.range[int(self.format_value)]
+                else:
+                    value = self.range[self.format_value]
             if value:
                 if type(value) is str:
                     return value
@@ -89,9 +92,10 @@ class Parameter:
         return self.set(self.raw_value - self.get_step_size())
 
 class ParameterGroup:
-    def __init__(self, name="", label=""):
+    def __init__(self, name="", label="", mod_prepend=False):
         self.name = name
         self.label = label
+        self.mod_prepend = mod_prepend
         self.items = []
     def append(self, item):
         self.items.append(item)
@@ -124,11 +128,17 @@ class Parameters:
 
     def add_parameter(self, item):
         self._items.append(item)
-        if item.mod:
-            self._mod_parameters.append(item.name)
         group = self.get_group(item.group)
         if group:
             group.append(item)
+        if item.mod:
+            label = item.label
+            if group and group.mod_prepend:
+                label = group.label + " " + label
+            self._mod_parameters.append({
+                "name": item.name,
+                "label": label
+            })
     def add_parameters(self, items):
         for item in items:
             self.add_parameter(item)
@@ -152,25 +162,14 @@ class Parameters:
             return self._items[value]
         return None
 
-    def get_mod_parameters(self, format=False):
-        if not format:
-            return self._mod_parameters
-        else:
-            parameters = {}
-            for name in self._mod_parameters:
-                parameter = self.get_parameter(name)
-                if (name[-2] == "_" and name[-1].isdigit()) or parameter.group == "arp":
-                    group = self.get_group(parameter.group)
-                    parameters[name] = group.label + " " + parameter.label
-                else:
-                    parameters[name] = parameter.label
-            return parameters
+    def get_mod_parameters(self):
+        return self._mod_parameters
     def get_mod_parameter(self):
         if self._mod_parameters and self._mod_parameter:
             if type(self._mod_parameter) is str:
                 return self._mod_parameter
             elif type(self._mod_parameter) is int:
-                return self._mod_parameters[self._mod_parameter]
+                return self._mod_parameters[self._mod_parameter].name
         return "volume"
     def set_mod_parameter(self, value):
         self._mod_parameter = value
