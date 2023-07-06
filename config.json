@@ -2,9 +2,11 @@
     "midi": {
         "max_channel": 15,
         "min_channel": 0,
+        "uart": true,
         "uart_tx": "GP4",
         "uart_rx": "GP5",
-        "update": 0.05
+        "usb": false,
+        "ble": false
     },
     "display": {
         "type": "1602",

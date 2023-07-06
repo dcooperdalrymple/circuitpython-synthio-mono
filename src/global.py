@@ -6,7 +6,7 @@ import synthio
 from audiomixer import Mixer
 
 from busio import UART
-import usb_midi, adafruit_midi
+import adafruit_midi
 from adafruit_midi.note_on import NoteOn
 from adafruit_midi.note_off import NoteOff
 from adafruit_midi.control_change import ControlChange

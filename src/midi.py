@@ -2,7 +2,7 @@ import time
 
 class Midi:
 
-    def __init__(self, uart_tx=None, uart_rx=None, update=0.05, map_path="/midi.json"):
+    def __init__(self, uart=True, uart_tx=None, uart_rx=None, usb=False, ble=False, update=0.05, map_path="/midi.json"):
         self._thru = False
         self._note_on = None
         self._note_off = None
@@ -12,56 +12,64 @@ class Midi:
         self._update = update
         self._now = 0.0
 
-        self._uart = UART(
-            tx=uart_tx,
-            rx=uart_rx,
-            baudrate=31250,
-            timeout=0.001
-        )
-        self._uart_midi = adafruit_midi.MIDI(
-            midi_in=self._uart,
-            midi_out=self._uart,
-            in_channel=0,
-            out_channel=0,
-            debug=False
-        )
-
-        self._usb_midi_driver = adafruit_midi.MIDI(
-            midi_in=usb_midi.ports[0],
-            midi_out=usb_midi.ports[1],
-            in_channel=0,
-            out_channel=0,
-            debug=False
-        )
-
-        try:
-            import adafruit_ble, adafruit_ble_midi
-            from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
-
-            self._ble_midi_service = adafruit_ble_midi.MIDIService()
-            self._ble_advertisement = ProvideServicesAdvertisement(self._ble_midi_service)
-
-            self._ble = adafruit_ble.BLERadio()
-            if self._ble.connected:
-                for connection in self._ble.connections:
-                    connection.disconnect()
-
-            self._ble_midi = adafruit_midi.MIDI(
-                midi_in=self._ble_midi_service,
-                midi_out=self._ble_midi_service,
+        if uart:
+            self._uart = UART(
+                tx=uart_tx,
+                rx=uart_rx,
+                baudrate=31250,
+                timeout=0.001
+            )
+            self._uart_midi = adafruit_midi.MIDI(
+                midi_in=self._uart,
+                midi_out=self._uart,
                 in_channel=0,
                 out_channel=0,
                 debug=False
             )
-        except:
-            self._ble_midi_service = None
-            self._ble_advertisement = None
+        else:
+            self._uart_midi = None
+
+        if usb:
+            import usb_midi
+            self._usb_midi = adafruit_midi.MIDI(
+                midi_in=usb_midi.ports[0],
+                midi_out=usb_midi.ports[1],
+                in_channel=0,
+                out_channel=0,
+                debug=False
+            )
+        else:
+            self._usb_midi = None
+
+        if ble:
+            try:
+                import adafruit_ble, adafruit_ble_midi
+                from adafruit_ble.advertising.standard import ProvideServicesAdvertisement
+
+                self._ble_midi_service = adafruit_ble_midi.MIDIService()
+                self._ble_advertisement = ProvideServicesAdvertisement(self._ble_midi_service)
+
+                self._ble = adafruit_ble.BLERadio()
+                if self._ble.connected:
+                    for connection in self._ble.connections:
+                        connection.disconnect()
+
+                self._ble_midi = adafruit_midi.MIDI(
+                    midi_in=self._ble_midi_service,
+                    midi_out=self._ble_midi_service,
+                    in_channel=0,
+                    out_channel=0,
+                    debug=False
+                )
+            except Exception as e:
+                self._ble_midi_service = None
+                self._ble_advertisement = None
+                self._ble = None
+                self._ble_midi = None
+                print("Device not bluetooth capable:")
+        else:
             self._ble = None
             self._ble_midi = None
-            print("Device not bluetooth capable")
-
-            free_module((ProvideServicesAdvertisement, adafruit_ble_midi, adafruit_ble))
-            del ProvideServicesAdvertisement, adafruit_ble_midi, adafruit_ble
 
         self._map = read_json(map_path)
 
@@ -81,11 +89,13 @@ class Midi:
             self._ble.start_advertising(self._ble_advertisement)
 
     def set_channel(self, value):
-        self._uart_midi.in_channel = value
-        self._uart_midi.out_channel = value
-        self._usb_midi_driver.in_channel = value
-        self._usb_midi_driver.out_channel = value
-        if self._ble and self._ble_midi:
+        if self._uart_midi:
+            self._uart_midi.in_channel = value
+            self._uart_midi.out_channel = value
+        if self._usb_midi:
+            self._usb_midi.in_channel = value
+            self._usb_midi.out_channel = value
+        if self._ble_midi:
             self._ble_midi.in_channel = value
             self._ble_midi.out_channel = value
     def set_thru(self, value):
@@ -115,8 +125,10 @@ class Midi:
                 self._program_change(msg.patch)
 
         if self._thru:
-            self._uart_midi.send(msg)
-            self._usb_midi_driver.send(msg)
+            if self._uart_midi:
+                self._uart_midi.send(msg)
+            if self._usb_midi:
+                self._usb_midi.send(msg)
             if self._ble and self._ble.connected and self._ble_midi:
                 self._ble_midi.send(msg)
     def _process_messages(self, midi, limit=32):
@@ -137,22 +149,25 @@ class Midi:
             return
         self._now = now
 
-        self._process_messages(self._uart_midi)
-        self._process_messages(self._usb_midi_driver)
+        if self._uart_midi:
+            self._process_messages(self._uart_midi)
+        if self._usb_midi:
+            self._process_messages(self._usb_midi)
         if self._ble and self._ble.connected and self._ble_midi:
             self._process_messages(self._ble_midi)
 
     def deinit(self):
         del self._map
-
-        if self._ble and self._ble.connected and self._ble_midi:
+        if self._ble and self._ble.connected:
             for connection in self._ble.connections:
                 connection.disconnect()
+        if self._ble_midi:
             del self._ble_midi_service
             del self._ble_advertisement
             del self._ble
             del self._ble_midi
-
-        del self._usb_midi_driver
-        del self._uart_midi
-        del self._uart
+        if self._usb_midi:
+            del self._usb_midi
+        if self._uart_midi:
+            del self._uart_midi
+            del self._uart

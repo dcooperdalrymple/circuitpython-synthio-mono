@@ -40,8 +40,11 @@ encoder = Encoder(
 
 print("\n:: Initializing Midi ::")
 midi = Midi(
+    uart=config.get(("midi", "uart"), True),
     uart_tx=config.gpio(("midi", "uart_tx"), "GP4"),
-    uart_rx=config.gpio(("midi", "uart_rx"), "GP5")
+    uart_rx=config.gpio(("midi", "uart_rx"), "GP5"),
+    usb=config.get(("midi", "usb"), False),
+    ble=config.get(("midi", "ble"), False)
 )
 
 print("\n:: Initializing Audio ::")
