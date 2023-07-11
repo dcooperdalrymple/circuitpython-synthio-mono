@@ -56,6 +56,7 @@ voice = Voice(
 )
 voice.set_filter_resonance(0.25)
 voice.set_filter_frequency(max_filter_frequency)
+voice.set_pitch_bend_amount(1.0)
 voice.oscillators[1].set_level(0.0)
 voice.update()
 
