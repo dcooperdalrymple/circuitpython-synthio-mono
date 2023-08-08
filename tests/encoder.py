@@ -21,14 +21,11 @@ print("https://dcdalrymple.com/circuitpython-synthio-mono/")
 
 gc.collect()
 
-print("\n:: Reading Configuration ::")
-config = Config()
-
 print("\n:: Initializing Encoder ::")
 encoder = Encoder(
-    pin_a=config.gpio(("encoder", "a"), "GP11"),
-    pin_b=config.gpio(("encoder", "b"), "GP12"),
-    pin_button=config.gpio(("encoder", "btn"), "GP13")
+    pin_a=getenvgpio("ENCODER_A", "GP11"),
+    pin_b=getenvgpio("ENCODER_B", "GP12"),
+    pin_button=getenvgpio("ENCODER_BTN", "GP13"),
 )
 
 def increment():

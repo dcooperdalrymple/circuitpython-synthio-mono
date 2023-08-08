@@ -149,3 +149,16 @@ def truncate_str(value, length, right_aligned=False):
         else:
             value = value + " " * (length - len(value))
     return value
+
+# Settings
+
+def getenvgpio(key, default=None):
+    return getattr(board, os.getenv(key, default), None)
+
+def getenvfloat(key, default=0.0, decimals=2):
+    mod=math.pow(10.0,decimals*1.0)
+    return os.getenv(key, default*mod)/mod
+
+def getenvbool(key, default=False):
+    default = 1 if default else 0
+    return os.getenv(key, 1 if default else 0) > 0

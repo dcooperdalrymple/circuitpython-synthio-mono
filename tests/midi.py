@@ -21,13 +21,13 @@ print("https://dcdalrymple.com/circuitpython-synthio-mono/")
 
 gc.collect()
 
-print("\n:: Reading Configuration ::")
-config = Config()
-
 print("\n:: Initializing Midi ::")
 midi = Midi(
-    uart_tx=config.gpio(("midi", "uart_tx"), "GP4"),
-    uart_rx=config.gpio(("midi", "uart_rx"), "GP5")
+    uart=getenvbool("MIDI_UART", True),
+    uart_tx=getenvgpio("MIDI_UART_TX", "GP4"),
+    uart_rx=getenvgpio("MIDI_UART_RX", "GP5"),
+    usb=getenvbool("MIDI_USB", False),
+    ble=getenvbool("MIDI_BLE", False)
 )
 
 def note_on(notenum, velocity):

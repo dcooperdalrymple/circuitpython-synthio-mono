@@ -26,10 +26,8 @@ check_dir("/waveforms")
 check_dir("/patches")
 
 # Configure USB Midi
-from synthio_mono import Config
 import usb_midi
-config = Config()
-if config.get(("midi", "usb"), False):
+if os.getenv("MIDI_USB", 0) > 0:
     usb_midi.enable()
 else:
     usb_midi.disable()

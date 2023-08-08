@@ -2,7 +2,7 @@
 # 2023 Cooper Dalrymple - me@dcdalrymple.com
 # GPL v3 License
 
-import time, board
+import time, board, os
 from digitalio import DigitalInOut, Direction, Pull
 from synthio_mono import *
 
@@ -21,19 +21,16 @@ print("https://dcdalrymple.com/circuitpython-synthio-mono/")
 
 gc.collect()
 
-print("\n:: Reading Configuration ::")
-config = Config()
-
 print("\n:: Initializing Audio ::")
 audio = Audio(
-    type=config.get(("audio", "type"), "i2s"),
-    i2s_clk=config.gpio(("audio", "clk"), "GP0"),
-    i2s_ws=config.gpio(("audio", "ws"), "GP1"),
-    i2s_data=config.gpio(("audio", "data"), "GP2"),
-    pwm_left=config.gpio(("audio", "pwm_left"), "GP0"),
-    pwm_right=config.gpio(("audio", "pwm_right"), "GP1"),
-    sample_rate=config.get(("audio", "rate"), 22050),
-    buffer_size=config.get(("audio", "buffer"), 4096)
+    type=os.getenv("AUDIO_TYPE", "i2s"),
+    i2s_clk=getenvgpio("AUDIO_CLK", "GP6"),
+    i2s_ws=getenvgpio("AUDIO_WS", "GP7"),
+    i2s_data=getenvgpio("AUDIO_DATA", "GP8"),
+    pwm_left=getenvgpio("AUDIO_PWM_LEFT", "GP0"),
+    pwm_right=getenvgpio("AUDIO_PWM_RIGHT", "GP1"),
+    sample_rate=os.getenv("AUDIO_RATE", 22050),
+    buffer_size=os.getenv("AUDIO_BUFFER", 4096)
 )
 
 print("\n:: Initializing Synthio ::")
@@ -41,13 +38,13 @@ synth = Synth(audio)
 
 print("\n:: Building Waveforms ::")
 waveforms = Waveforms(
-    samples=config.get(("waveform", "samples"), 256),
-    amplitude=config.get(("waveform", "amplitude"), 12000)
+    samples=os.getenv("WAVE_SAMPLES", 256),
+    amplitude=os.getenv("WAVE_AMPLITUDE", 12000)
 )
 
 print("\n:: Building Voice ::")
-min_filter_frequency=config.get(("oscillator", "filter", "min_frequency"), 60.0)
-max_filter_frequency=min(audio.get_sample_rate()*0.45, config.get(("oscillator", "filter", "max_frequency"), 20000.0))
+min_filter_frequency=getenvfloat("OSC_FILTER_MIN_FREQ", 60.0)
+max_filter_frequency=min(audio.get_sample_rate()*0.45, getenvfloat("OSC_FILTER_MAX_FREQ", 20000.0))
 voice = Voice(
     synth,
     waveforms,
@@ -75,8 +72,11 @@ keyboard.set_release(release)
 
 print("\n:: Initializing Midi ::")
 midi = Midi(
-    uart_tx=config.gpio(("midi", "uart_tx"), "GP4"),
-    uart_rx=config.gpio(("midi", "uart_rx"), "GP5")
+    uart=getenvbool("MIDI_UART", True),
+    uart_tx=getenvgpio("MIDI_UART_TX", "GP4"),
+    uart_rx=getenvgpio("MIDI_UART_RX", "GP5"),
+    usb=getenvbool("MIDI_USB", False),
+    ble=getenvbool("MIDI_BLE", False)
 )
 
 def note_on(notenum, velocity):

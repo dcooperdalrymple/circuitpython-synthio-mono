@@ -3,7 +3,7 @@
 # GPL v3 License
 # Version 1.0
 
-import time, board, gc
+import time, board, gc, os
 from digitalio import DigitalInOut, Direction
 from synthio_mono import *
 
@@ -23,40 +23,37 @@ print("https://dcdalrymple.com/circuitpython-synthio-mono/")
 
 gc.collect()
 
-print("\n:: Reading Configuration ::")
-config = Config()
-
 print("\n:: Initializing Display ::")
-display = get_display(config)
+display = get_display()
 display.set_value("synthio-mono")
 display.set_title("Loading...")
 
 print("\n:: Initializing Encoder ::")
 encoder = Encoder(
-    pin_a=config.gpio(("encoder", "a"), "GP11"),
-    pin_b=config.gpio(("encoder", "b"), "GP12"),
-    pin_button=config.gpio(("encoder", "btn"), "GP13")
+    pin_a=getenvgpio("ENCODER_A", "GP11"),
+    pin_b=getenvgpio("ENCODER_B", "GP12"),
+    pin_button=getenvgpio("ENCODER_BTN", "GP13"),
 )
 
 print("\n:: Initializing Midi ::")
 midi = Midi(
-    uart=config.get(("midi", "uart"), True),
-    uart_tx=config.gpio(("midi", "uart_tx"), "GP4"),
-    uart_rx=config.gpio(("midi", "uart_rx"), "GP5"),
-    usb=config.get(("midi", "usb"), False),
-    ble=config.get(("midi", "ble"), False)
+    uart=getenvbool("MIDI_UART", True),
+    uart_tx=getenvgpio("MIDI_UART_TX", "GP4"),
+    uart_rx=getenvgpio("MIDI_UART_RX", "GP5"),
+    usb=getenvbool("MIDI_USB", False),
+    ble=getenvbool("MIDI_BLE", False)
 )
 
 print("\n:: Initializing Audio ::")
 audio = Audio(
-    type=config.get(("audio", "type"), "i2s"),
-    i2s_clk=config.gpio(("audio", "clk"), "GP0"),
-    i2s_ws=config.gpio(("audio", "ws"), "GP1"),
-    i2s_data=config.gpio(("audio", "data"), "GP2"),
-    pwm_left=config.gpio(("audio", "pwm_left"), "GP0"),
-    pwm_right=config.gpio(("audio", "pwm_right"), "GP1"),
-    sample_rate=config.get(("audio", "rate"), 22050),
-    buffer_size=config.get(("audio", "buffer"), 4096)
+    type=os.getenv("AUDIO_TYPE", "i2s"),
+    i2s_clk=getenvgpio("AUDIO_CLK", "GP6"),
+    i2s_ws=getenvgpio("AUDIO_WS", "GP7"),
+    i2s_data=getenvgpio("AUDIO_DATA", "GP8"),
+    pwm_left=getenvgpio("AUDIO_PWM_LEFT", "GP0"),
+    pwm_right=getenvgpio("AUDIO_PWM_RIGHT", "GP1"),
+    sample_rate=os.getenv("AUDIO_RATE", 22050),
+    buffer_size=os.getenv("AUDIO_BUFFER", 4096)
 )
 
 print("\n:: Initializing Synthio ::")
@@ -64,13 +61,13 @@ synth = Synth(audio)
 
 print("\n:: Building Waveforms ::")
 waveforms = Waveforms(
-    samples=config.get(("waveform", "samples"), 256),
-    amplitude=config.get(("waveform", "amplitude"), 12000)
+    samples=os.getenv("WAVE_SAMPLES", 256),
+    amplitude=os.getenv("WAVE_AMPLITUDE", 12000)
 )
 
 print("\n:: Building Voice ::")
-min_filter_frequency=config.get(("oscillator", "filter", "min_frequency"), 60.0)
-max_filter_frequency=min(audio.get_sample_rate()*0.45, config.get(("oscillator", "filter", "max_frequency"), 20000.0))
+min_filter_frequency=getenvfloat("OSC_FILTER_MIN_FREQ", 60.0)
+max_filter_frequency=min(audio.get_sample_rate()*0.45, getenvfloat("OSC_FILTER_MAX_FREQ", 20000.0))
 voice = Voice(
     synth,
     waveforms,
@@ -121,7 +118,7 @@ parameters.add_parameters([
         name="midi_channel",
         label="MIDI Chan",
         group="global",
-        range=(config.get(("midi", "min_channel"), 0), config.get(("midi", "max_channel"), 15)),
+        range=(os.getenv("MIDI_MIN_CHANNEL", 0), os.getenv("MIDI_MAX_CHANNEL", 15)),
         set_callback=midi.set_channel,
         mod=False,
         patch=False
@@ -146,7 +143,7 @@ parameters.add_parameters([
         name="glide",
         label="Glide",
         group="global",
-        range=(config.get(("oscillator", "min_glide"), 0.05), config.get(("oscillator", "max_glide"), 2.0)),
+        range=(getenvfloat("OSC_MIN_GLIDE",0.05), getenvfloat("OSC_MAX_GLIDE", 2.0)),
         set_callback=voice.set_glide,
         patch=False
     ),
@@ -167,7 +164,7 @@ parameters.add_parameters([
         name="bend_amount",
         label="Pitch Bend",
         group="global",
-        range=config.get(("oscillator", "max_bend"), 1.0),
+        range=getenvfloat("OSC_MAX_BEND",1.0),
         value=1.0,
         set_callback=voice.set_pitch_bend_amount,
         patch=False
@@ -208,7 +205,7 @@ parameters.add_parameters([
         name="arp_bpm",
         label="BPM",
         group="arp",
-        range=(config.get(("arpeggiator", "min_bpm"), 60), config.get(("arpeggiator", "max_bpm"), 240)),
+        range=(os.getenv("ARP_MIN_BPM",60), os.getenv("ARP_MAX_BPM",240)),
         set_callback=arpeggiator.set_bpm
     ),
     Parameter(
@@ -222,7 +219,7 @@ parameters.add_parameters([
         name="arp_gate",
         label="Gate",
         group="arp",
-        range=(config.get(("arpeggiator", "min_gate"), 0.1), config.get(("arpeggiator", "max_gate"), 1.0)),
+        range=(getenvfloat("ARP_MIN_GATE",0.1), getenvfloat("ARP_MAX_GATE",1.0)),
         value=1.0,
         set_callback=arpeggiator.set_gate
     ),
@@ -254,21 +251,21 @@ parameters.add_parameters([
         name="filter_resonance",
         label="Resonace",
         group="voice",
-        range=(config.get(("oscillator", "filter", "min_resonance"), 0.25), config.get(("oscillator", "filter", "max_resonance"), 16.0)),
+        range=(getenvfloat("OSC_FILTER_MIN_RESO",0.25), getenvfloat("OSC_FILTER_MAX_RESO",16.0)),
         set_callback=voice.set_filter_resonance
     ),
     Parameter(
         name="filter_envelope_attack_time",
         label="FltrEnvAtk",
         group="voice",
-        range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
+        range=(getenvfloat("OSC_ENVELOPE_MIN_TIME",0.01), getenvfloat("OSC_ENVELOPE_MAX_TIME",2.0)),
         set_callback=voice.set_filter_attack_time
     ),
     Parameter(
         name="filter_envelope_release_time",
         label="FltrEnvDcy",
         group="voice",
-        range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
+        range=(getenvfloat("OSC_ENVELOPE_MIN_TIME",0.01), getenvfloat("OSC_ENVELOPE_MAX_TIME",2.0)),
         set_callback=voice.set_filter_release_time
     ),
     Parameter(
@@ -304,21 +301,21 @@ parameters.add_parameters([
         name="attack_time",
         label="Attack",
         group="voice",
-        range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
+        range=(getenvfloat("OSC_ENVELOPE_MIN_TIME",0.01), getenvfloat("OSC_ENVELOPE_MAX_TIME",2.0)),
         set_callback=voice.set_envelope_attack_time
     ),
     Parameter(
         name="decay_time",
         label="Decay",
         group="voice",
-        range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
+        range=(getenvfloat("OSC_ENVELOPE_MIN_TIME",0.01), getenvfloat("OSC_ENVELOPE_MAX_TIME",2.0)),
         set_callback=voice.set_envelope_decay_time
     ),
     Parameter(
         name="release_time",
         label="Release",
         group="voice",
-        range=(config.get(("oscillator", "envelope", "min_time"), 0.05), config.get(("oscillator", "envelope", "max_time"), 2.0)),
+        range=(getenvfloat("OSC_ENVELOPE_MIN_TIME",0.01), getenvfloat("OSC_ENVELOPE_MAX_TIME",2.0)),
         set_callback=voice.set_envelope_release_time
     ),
     Parameter(
@@ -341,14 +338,14 @@ parameters.add_parameters([
         name="glide_0",
         label="Glide",
         group="osc0",
-        range=(config.get(("oscillator", "min_glide"), 0.05), config.get(("oscillator", "max_glide"), 2.0)),
+        range=(getenvfloat("OSC_MIN_GLIDE",0.01), getenvfloat("OSC_MAX_GLIDE",2.0)),
         set_callback=voice.oscillators[0].set_glide
     ),
     Parameter(
         name="bend_amount_0",
         label="Pitch Bend",
         group="osc0",
-        range=config.get(("oscillator", "max_bend"), 1.0),
+        range=getenvfloat("OSC_MAX_BEND",1.0),
         value=1.0,
         set_callback=voice.oscillators[0].set_pitch_bend_amount
     ),
@@ -370,7 +367,7 @@ parameters.add_parameters([
         name="coarse_tune_0",
         label="CoarseTune",
         group="osc0",
-        range=config.get(("oscillator", "max_coarse_tune"), 2.0),
+        range=getenvfloat("OSC_MAX_COARSE_TUNE",3.0),
         value=0.5,
         set_callback=voice.oscillators[0].set_coarse_tune
     ),
@@ -378,7 +375,7 @@ parameters.add_parameters([
         name="fine_tune_0",
         label="Fine Tune",
         group="osc0",
-        range=config.get(("oscillator", "max_fine_tune"), 0.0833),
+        range=getenvfloat("OSC_MAX_FINE_TUNE",0.08),
         value=0.5,
         set_callback=voice.oscillators[0].set_fine_tune
     ),
@@ -431,14 +428,14 @@ parameters.add_parameters([
         name="glide_1",
         label="Glide",
         group="osc1",
-        range=(config.get(("oscillator", "min_glide"), 0.05), config.get(("oscillator", "max_glide"), 2.0)),
+        range=(getenvfloat("OSC_MIN_GLIDE",0.01), getenvfloat("OSC_MAX_GLIDE",2.0)),
         set_callback=voice.oscillators[1].set_glide
     ),
     Parameter(
         name="bend_amount_1",
         label="Pitch Bend",
         group="osc1",
-        range=config.get(("oscillator", "max_bend"), 1.0),
+        range=getenvfloat("OSC_MAX_BEND",1.0),
         value=1.0,
         set_callback=voice.oscillators[1].set_pitch_bend_amount
     ),
@@ -460,7 +457,7 @@ parameters.add_parameters([
         name="coarse_tune_1",
         label="CoarseTune",
         group="osc1",
-        range=config.get(("oscillator", "max_coarse_tune"), 2.0),
+        range=getenvfloat("OSC_MAX_COARSE_TUNE",3.0),
         value=0.5,
         set_callback=voice.oscillators[1].set_coarse_tune
     ),
@@ -468,7 +465,7 @@ parameters.add_parameters([
         name="fine_tune_1",
         label="Fine Tune",
         group="osc1",
-        range=config.get(("oscillator", "max_fine_tune"), 0.0833),
+        range=getenvfloat("OSC_MAX_FINE_TUNE",0.08),
         value=0.5,
         set_callback=voice.oscillators[1].set_fine_tune
     ),
@@ -516,7 +513,6 @@ parameters.add_parameters([
         set_callback=voice.oscillators[1].set_pan_depth
     )
 ])
-config.deinit()
 gc.collect()
 
 parameters.get_parameter("mod_parameter").range = parameters.get_mod_parameters()

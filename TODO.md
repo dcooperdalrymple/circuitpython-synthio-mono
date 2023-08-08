@@ -7,6 +7,8 @@
 - Envelope retrigger
 - REAPER JSFX Controller Plugin
 - Dynamic waveform generation with pulse width modulation and lerping support
-- Use jumper to enable/disable usb file transfer
+- Use jumper to enable/disable usb file transfer?
 - Use asyncio library for multitasking?
-- Replace config.json with settings.toml
+- Make mod wheel value affect parameters dynamically without modifying patches
+- Add mod wheel amount
+- Improve overall stability

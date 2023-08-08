@@ -258,7 +258,7 @@ class DisplayCharacterLCD_1602(DisplayCharacterLCD):
             self.show_cursor((i-1)%self._columns, 1)
 
 class DisplayCharacterLCD_1604(DisplayCharacterLCD):
-    def __init__(self, rs, en, d4, d5, d6, d7):
+    def __init__(self, rs, en, d4, d5, d6, d7, vo=None, contrast=0.5):
         super().__init__(rs, en, d4, d5, d6, d7, 16, 4, vo, contrast)
     def set_title(self, text):
         self._write(text, row=1)
@@ -277,41 +277,43 @@ class DisplayCharacterLCD_1604(DisplayCharacterLCD):
         else:
             self.show_cursor((i-1)%self._columns, 3)
 
-def get_display(config):
-    type = config.get(("display", "type"), "ssd1306_128x32")
+def get_display():
+    type = os.getenv("DISPLAY_TYPE","1602")
     if type == "ssd1306_128x32":
         return DisplaySSD1306_128x32(
-            scl=config.gpio(("display", "scl"), "GP21"),
-            sda=config.gpio(("display", "sda"), "GP20"),
-            speed=config.get(("display", "speed"), 1000000),
-            address=config.get(("display", "address"), 0x3c)
+            scl=getenvgpio("DISPLAY_SCL","GP21"),
+            sda=getenvgpio("DISPLAY_SDA","GP20"),
+            speed=os.getenv("DISPLAY_SPEED",1000000),
+            address=os.getenv("DISPLAY_ADDRESS",0x3c)
         )
     elif type == "ssd1306_128x64":
         return DisplaySSD1306_128x64(
-            scl=config.gpio(("display", "scl"), "GP21"),
-            sda=config.gpio(("display", "sda"), "GP20"),
-            speed=config.get(("display", "speed"), 1000000),
-            address=config.get(("display", "address"), 0x3c)
+            scl=getenvgpio("DISPLAY_SCL","GP21"),
+            sda=getenvgpio("DISPLAY_SDA","GP20"),
+            speed=os.getenv("DISPLAY_SPEED",1000000),
+            address=os.getenv("DISPLAY_ADDRESS",0x3c)
         )
     elif type == "1602":
         return DisplayCharacterLCD_1602(
-            rs=config.gpio(("display", "rs")),
-            en=config.gpio(("display", "en")),
-            d4=config.gpio(("display", "d4")),
-            d5=config.gpio(("display", "d5")),
-            d6=config.gpio(("display", "d6")),
-            d7=config.gpio(("display", "d7")),
-            vo=config.gpio(("display", "vo")),
-            contrast=config.get(("display", "contrast"), 0.5)
+            rs=getenvgpio("DISPLAY_RS"),
+            en=getenvgpio("DISPLAY_EN"),
+            d4=getenvgpio("DISPLAY_D4"),
+            d5=getenvgpio("DISPLAY_D5"),
+            d6=getenvgpio("DISPLAY_D6"),
+            d7=getenvgpio("DISPLAY_D7"),
+            vo=getenvgpio("DISPLAY_VO"),
+            contrast=getenvfloat("DISPLAY_CONTRAST",0.25)
         )
     elif type == "1604":
         return DisplayCharacterLCD_1604(
-            rs=config.gpio(("display", "rs")),
-            en=config.gpio(("display", "en")),
-            d4=config.gpio(("display", "d4")),
-            d5=config.gpio(("display", "d5")),
-            d6=config.gpio(("display", "d6")),
-            d7=config.gpio(("display", "d7"))
+            rs=getenvgpio("DISPLAY_RS"),
+            en=getenvgpio("DISPLAY_EN"),
+            d4=getenvgpio("DISPLAY_D4"),
+            d5=getenvgpio("DISPLAY_D5"),
+            d6=getenvgpio("DISPLAY_D6"),
+            d7=getenvgpio("DISPLAY_D7"),
+            vo=getenvgpio("DISPLAY_VO"),
+            contrast=getenvfloat("DISPLAY_CONTRAST",0.25)
         )
     else:
         return Display() # Dummy display

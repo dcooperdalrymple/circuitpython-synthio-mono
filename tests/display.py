@@ -21,11 +21,8 @@ print("https://dcdalrymple.com/circuitpython-synthio-mono/")
 
 gc.collect()
 
-print("\n:: Reading Configuration ::")
-config = Config()
-
 print("\n:: Initializing Display ::")
-display = get_display(config)
+display = get_display()
 display.set_value("Display Test")
 display.show_cursor(0, 0)
 
