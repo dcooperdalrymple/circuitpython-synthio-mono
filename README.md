@@ -8,7 +8,7 @@ Parametric monophonic synthesizer built using CircuitPython's synthio module usi
 * Single dual oscillator monophonic voice.
 * Store patches and custom waveforms in onboard memory.
 * Supports simultaneous USB, hardware (UART), and bluetooth (BLE) MIDI communication with global thru support.
-* Support for compatible OLED and Character LCD displays: SSD1306 128x32 and 128x64, 1602 and 1604 character lcds.
+* Support for compatible displays: 1602 and 1604 character lcds.
 * Individual oscillator control of level, glide, tuning, pitch bend, waveform, tremolo, vibrato, and stereo panning.
 * Global filter with three modes: Low-Pass, High-Pass, and Band-Pass.
 * Fully configurable device settings and MIDI map.
@@ -22,7 +22,7 @@ Parametric monophonic synthesizer built using CircuitPython's synthio module usi
 
 * [Raspberry Pi Pico W using RP2040](https://www.raspberrypi.com/products/raspberry-pi-pico/) or other compatible CircuitPython device with optional bluetooth support.
 * I2S Audio Module, PCM5102A based device recommended
-* SSD1306 128x32 or 128x64 OLED display or 1602 or 1604 Character LCD
+* 1602 or 1604 Character LCD
 * KY-040 rotary encoder (or other rotary encoder with momentary switch)
 
 ## Software Compilation and Device Upload
