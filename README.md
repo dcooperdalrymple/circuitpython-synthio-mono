@@ -1,4 +1,7 @@
 # CircuitPython synthio Monophonic Synthesizer
+
+**NOTE**: _This project has been replaced by [pico_synth_sandbox](https://github.com/dcooperdalrymple/pico_synth_sandbox/) which implements most features that can be found here with better optimization and additional functionality. This repository will no longer receive future updates._
+
 Parametric monophonic synthesizer built using CircuitPython's synthio module using the RP2040, UART/USB/BLE MIDI input, and I2S audio output. Controlled with a MIDI control interface or with a supported display and momentary switch rotary encoder.
 
 [![Demonstration Video Thumbnail](assets/thumb.jpg)](https://www.youtube.com/watch?v=uuqIeZu2VT8 "Watch a demonstration of this project on YouTube")

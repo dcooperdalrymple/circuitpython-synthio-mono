@@ -1,6 +1,6 @@
 # TODO
 
-**Updated:** 2023-07-06
+**Updated:** 2023-08-08
 
 - LFO Waveforms
 - Polyphony?
@@ -12,3 +12,4 @@
 - Make mod wheel value affect parameters dynamically without modifying patches
 - Add mod wheel amount
 - Improve overall stability
+- Improve parameter/menu memory efficiency
